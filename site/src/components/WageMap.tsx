@@ -1,95 +1,92 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import Map, { Source, Layer, FillLayer, LineLayer, Popup, NavigationControl, ScaleControl } from "react-map-gl";
-import * as topojson from "topojson-client"; 
+import { useEffect, useState } from "react";
+import Map, { Source, Layer, FillLayer, LineLayer, Popup } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-const TOPOJSON_URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
+const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
 
 export default function WageMap({ socCode, userSalary }: { socCode: string, userSalary: number }) {
-  const [geoData, setGeoData] = useState<any>(null); 
-  const [wageData, setWageData] = useState<Record<string, any> | null>(null);
+  // We use <any> here to prevent TypeScript from complaining about the complex GeoJSON shape
+  const [mergedData, setMergedData] = useState<any>(null);
   const [hoverInfo, setHoverInfo] = useState<any>(null);
-  const [loadingMsg, setLoadingMsg] = useState("Initializing...");
+  const [status, setStatus] = useState("Initializing...");
 
+  // 1. Load & Merge Data
   useEffect(() => {
     if (!socCode) return;
-    setLoadingMsg("Updating Map...");
+    setStatus("Loading Map & Data...");
 
-    const fetchData = async () => {
-      try {
-        const [topologyRes, wagesRes] = await Promise.all([
-          fetch(TOPOJSON_URL),
-          fetch(`/jobs/${socCode}.json`)
-        ]);
+    Promise.all([
+      fetch(GEOJSON_URL).then(res => res.json()),
+      fetch(`/jobs/${socCode}.json`).then(res => res.json())
+    ]).then(([geoJson, wageData]) => {
+      
+      const processedFeatures = geoJson.features.map((feature: any) => {
+        const fipsId = parseInt(feature.id, 10);
+        // Robust ID Lookup
+        const countyWages = wageData[fipsId] || wageData[feature.id] || wageData[String(fipsId).padStart(5, '0')];
 
-        const topology = await topologyRes.json();
-        const wages = await wagesRes.json();
-        const geojson = topojson.feature(topology, topology.objects.counties);
+        let color = "#e5e7eb"; 
         
-        setGeoData(geojson);
-        setWageData(wages);
-        setLoadingMsg(""); 
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchData();
-  }, [socCode]);
+        // Inject Wage Data + Calculate Level
+        if (countyWages) {
+            feature.properties = { ...feature.properties, ...countyWages };
+            
+            // Determine User's Level
+            if (userSalary >= countyWages.l4) { color = "#10b981"; feature.properties.userLevel = 4; }
+            else if (userSalary >= countyWages.l3) { color = "#3b82f6"; feature.properties.userLevel = 3; }
+            else if (userSalary >= countyWages.l2) { color = "#f59e0b"; feature.properties.userLevel = 2; }
+            else if (userSalary >= countyWages.l1) { color = "#ef4444"; feature.properties.userLevel = 1; }
+            else { color = "#9ca3af"; feature.properties.userLevel = 0; }
+        }
+        
+        feature.properties.calculatedColor = color;
+        return feature;
+      });
 
-  const mergedGeoJSON = useMemo(() => {
-    if (!geoData || !wageData) return null;
+      // We explicitly create the object structure
+      setMergedData({ 
+        type: "FeatureCollection", 
+        features: processedFeatures 
+      });
 
-    const features = geoData.features.map((feature: any) => {
-      const fipsId = parseInt(feature.id, 10);
-      const data = wageData[fipsId] || wageData[feature.id] || wageData[String(fipsId).padStart(5, '0')];
-
-      let color = "#E5E7EB"; 
-      let level = 0; // 0 = Fail
-
-      if (data) {
-        if (userSalary >= data.l4) { color = "#059669"; level = 4; }      
-        else if (userSalary >= data.l3) { color = "#3B82F6"; level = 3; } 
-        else if (userSalary >= data.l2) { color = "#F59E0B"; level = 2; } 
-        else if (userSalary >= data.l1) { color = "#EF4444"; level = 1; } 
-      }
-
-      return {
-        ...feature,
-        properties: { ...feature.properties, ...data, level, color }
-      };
+      setStatus(`✅ Ready! Displaying ${socCode}`);
+    }).catch(err => {
+      console.error(err);
+      setStatus("❌ Error loading data");
     });
 
-    return { type: "FeatureCollection", features };
-  }, [geoData, wageData, userSalary]);
+  }, [socCode, userSalary]);
 
+  // 2. Map Style
   const fillLayer: FillLayer = {
     id: "county-fill",
     type: "fill",
     paint: {
-      "fill-color": ["get", "color"],
-      "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.8],
-      "fill-outline-color": "rgba(255,255,255,0.1)"
+      "fill-color": ["get", "calculatedColor"], 
+      "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.8]
     }
   };
 
-  const lineLayer: LineLayer = {
-    id: "county-line",
+  const borderLayer: LineLayer = {
+    id: "county-outline",
     type: "line",
-    paint: { "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.3 }
+    paint: { "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.5 }
   };
 
   return (
-    <div className="relative w-full h-full bg-gray-50 overflow-hidden rounded-xl border border-gray-200 shadow-inner">
-      {!TOKEN && <div className="absolute z-50 bg-red-500 text-white p-2">Missing Token</div>}
+    <div className="h-[650px] w-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
+      {!TOKEN && <div className="absolute inset-0 flex items-center justify-center text-red-600 bg-red-50 z-50">Missing Mapbox Token</div>}
       
-      {loadingMsg && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-            <span className="text-sm font-medium text-gray-600 animate-pulse">{loadingMsg}</span>
-        </div>
-      )}
+      <div className="absolute top-2 left-2 bg-black/80 text-white p-2 rounded text-xs font-mono z-20 pointer-events-none">
+        {status}
+      </div>
+
+      <div className="absolute top-2 right-2 bg-blue-600/90 text-white px-3 py-1.5 rounded-lg text-xs font-semibold z-20 shadow-sm backdrop-blur">
+         ⚖️ FY2027 Rule: Weighted Selection Active
+      </div>
 
       <Map
         initialViewState={{ longitude: -96, latitude: 37.8, zoom: 3.5 }}
@@ -97,66 +94,60 @@ export default function WageMap({ socCode, userSalary }: { socCode: string, user
         mapStyle="mapbox://styles/mapbox/light-v11"
         mapboxAccessToken={TOKEN}
         interactiveLayerIds={['county-fill']}
-        onMouseMove={(e) => {
-          const feature = e.features?.[0];
-          if (feature) {
-             setHoverInfo({
-               lng: e.lngLat.lng,
-               lat: e.lngLat.lat,
-               props: feature.properties
-             });
-          } else {
-            setHoverInfo(null);
-          }
+        onMouseMove={(event) => {
+            const { features, lngLat } = event;
+            const hoveredFeature = features && features[0];
+            if (hoveredFeature && hoveredFeature.properties?.l1) {
+                setHoverInfo({
+                    longitude: lngLat.lng,
+                    latitude: lngLat.lat,
+                    properties: hoveredFeature.properties
+                });
+            } else {
+                setHoverInfo(null);
+            }
         }}
         onMouseLeave={() => setHoverInfo(null)}
       >
-        {mergedGeoJSON && (
-          <Source type="geojson" data={mergedGeoJSON}>
-            <Layer {...fillLayer} />
-            <Layer {...lineLayer} />
+        {/* THE FIX: We add 'as any' to force TypeScript to accept our data */}
+        {mergedData && (
+          <Source type="geojson" data={mergedData as any}>
+             <Layer {...fillLayer} />
+             <Layer {...borderLayer} />
           </Source>
         )}
-        
-        <NavigationControl position="bottom-right" showCompass={false} />
 
-        {/* --- SIMPLIFIED TOOLTIP --- */}
-        {hoverInfo && hoverInfo.props.l1 && (
+        {hoverInfo && (
             <Popup
-                longitude={hoverInfo.lng}
-                latitude={hoverInfo.lat}
+                longitude={hoverInfo.longitude}
+                latitude={hoverInfo.latitude}
                 offset={15}
                 closeButton={false}
                 closeOnClick={false}
-                maxWidth="220px"
                 className="z-50"
+                maxWidth="320px"
             >
-                <div className="p-1 text-center font-sans">
-                    {/* Header */}
-                    <div className="border-b border-gray-100 pb-2 mb-2">
-                        <h3 className="font-bold text-gray-900 text-sm">{hoverInfo.props.c}, {hoverInfo.props.s}</h3>
-                        
+                <div className="text-sm p-1 font-sans">
+                    <div className="mb-2 border-b pb-2">
+                        <h3 className="font-bold text-gray-900 text-base">{hoverInfo.properties.c}, {hoverInfo.properties.s}</h3>
+                        <p className="text-xs text-gray-500">
+                             Based on offer: <span className="font-semibold text-gray-700">${userSalary.toLocaleString()}</span>
+                        </p>
                     </div>
                     
-                    {/* The Big Result Badge */}
-                    <div className="flex justify-center mb-3">
-                        <ResultBadge level={hoverInfo.props.level} />
+                    <div className="space-y-2">
+                        <WageRow level={4} amount={hoverInfo.properties.l4} userSalary={userSalary} 
+                            odds="4 Entries" prob="~61%" impact="+107% Chance" />
+                        <WageRow level={3} amount={hoverInfo.properties.l3} userSalary={userSalary} 
+                            odds="3 Entries" prob="~46%" impact="+55% Chance" />
+                        <WageRow level={2} amount={hoverInfo.properties.l2} userSalary={userSalary} 
+                            odds="2 Entries" prob="~30%" impact="+3% Chance" />
+                        <WageRow level={1} amount={hoverInfo.properties.l1} userSalary={userSalary} 
+                            odds="1 Entry" prob="~15%" impact="-48% Chance" />
                     </div>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-50 pt-2">
-                        <div className="flex flex-col items-center p-1.5 bg-gray-50 rounded">
-                            <span className="text-[10px] text-gray-400 uppercase">Entries</span>
-                            <span className="font-bold text-gray-800 text-sm">
-                                {hoverInfo.props.level === 0 ? "0" : hoverInfo.props.level}x
-                            </span>
-                        </div>
-                        <div className="flex flex-col items-center p-1.5 bg-gray-50 rounded">
-                            <span className="text-[10px] text-gray-400 uppercase">Win Prob</span>
-                            <span className={`font-bold text-sm ${getProbColor(hoverInfo.props.level)}`}>
-                                {getProbText(hoverInfo.props.level)}
-                            </span>
-                        </div>
+                    <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] text-gray-400 leading-tight">
+                        *Probabilities based on DHS Docket No. USCIS-2025-0040 Projections.
                     </div>
                 </div>
             </Popup>
@@ -166,30 +157,29 @@ export default function WageMap({ socCode, userSalary }: { socCode: string, user
   );
 }
 
-// --- HELPER COMPONENTS ---
+function WageRow({ level, amount, userSalary, odds, prob, impact }: any) {
+    const isCovered = userSalary >= amount;
+    
+    const rowClass = isCovered ? "opacity-100" : "opacity-40 grayscale";
+    const badgeColor = isCovered 
+        ? (level >= 3 ? "bg-green-50 text-green-700 border-green-200" : (level === 2 ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-red-50 text-red-700 border-red-100"))
+        : "bg-gray-50 text-gray-500 border-gray-100";
 
-function ResultBadge({ level }: { level: number }) {
-    if (level === 4) return <Badge bg="bg-emerald-100" text="text-emerald-700" label="Level 4 (Best)" />;
-    if (level === 3) return <Badge bg="bg-blue-100" text="text-blue-700" label="Level 3 (High)" />;
-    if (level === 2) return <Badge bg="bg-amber-100" text="text-amber-700" label="Level 2 (Fair)" />;
-    if (level === 1) return <Badge bg="bg-red-100" text="text-red-700" label="Level 1 (Risky)" />;
-    return <Badge bg="bg-gray-100" text="text-gray-500" label="Not Qualified" />;
-}
+    return (
+        <div className={`flex justify-between items-center ${rowClass} transition-all duration-200`}>
+            <div className="flex flex-col w-20">
+                <span className="font-bold text-gray-800 text-xs">Level {level}</span>
+                <span className="text-[10px] text-gray-500">${amount?.toLocaleString()}</span>
+            </div>
 
-function Badge({ bg, text, label }: any) {
-    return <span className={`${bg} ${text} px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-white`}>{label}</span>;
-}
+            <div className={`flex-1 mx-2 text-[10px] font-medium text-center ${isCovered ? "text-gray-700" : "text-gray-400"}`}>
+                {odds}
+            </div>
 
-function getProbText(level: number) {
-    if (level === 4) return "~61%";
-    if (level === 3) return "~46%";
-    if (level === 2) return "~30%";
-    if (level === 1) return "~15%";
-    return "0%";
-}
-
-function getProbColor(level: number) {
-    if (level >= 3) return "text-emerald-600";
-    if (level === 2) return "text-amber-600";
-    return "text-red-600";
+            <div className={`w-24 px-1.5 py-1 rounded border text-[10px] font-medium flex flex-col items-end ${badgeColor}`}>
+                <span className="font-bold">{prob} Win Rate</span>
+                <span className="text-[9px] opacity-80">{impact}</span>
+            </div>
+        </div>
+    );
 }
