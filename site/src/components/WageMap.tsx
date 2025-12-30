@@ -92,10 +92,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
              const [minLng, minLat, maxLng, maxLat] = bbox(feature);
              mapRef.current.fitBounds(
                  [[minLng, minLat], [maxLng, maxLat]],
-                 { 
-                     padding: 50, // Reduced padding since controls are outside now
-                     duration: 2000 
-                 }
+                 { padding: 50, duration: 2000 }
              );
 
              setSelectedInfo({
@@ -130,10 +127,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   return (
     <div className="flex flex-col gap-4">
       
-      {/* --- 1. NEW EXTERNAL DASHBOARD PANEL --- */}
+      {/* --- DASHBOARD HEADER --- */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-        
-        {/* Job Title (Left - spans 4 cols) */}
         <div className="md:col-span-4 flex items-center gap-3 border-b md:border-b-0 md:border-r border-gray-100 pb-3 md:pb-0 md:pr-4">
              <div className="bg-blue-100 p-2 rounded-lg">
                 <Briefcase className="w-5 h-5 text-blue-700" />
@@ -145,14 +140,12 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
              </div>
         </div>
 
-        {/* Jump To Controls (Middle/Right - spans 8 cols) */}
         <div className="md:col-span-8 flex flex-col md:flex-row items-center gap-3">
              <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase whitespace-nowrap md:ml-auto">
                 <MapPin className="w-3 h-3 text-blue-600" />
                 <span>Locate County:</span>
             </div>
             
-            {/* State */}
             <div className="relative group w-full md:w-48">
                 <select 
                     value={selectedState}
@@ -170,7 +163,6 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                 <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
 
-            {/* County */}
             <div className="relative group w-full md:w-56">
                 <select 
                     value={selectedCountyFips}
@@ -192,16 +184,14 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
         </div>
       </div>
 
-      {/* --- 2. MAP CONTAINER --- */}
+      {/* --- MAP --- */}
       <div className="h-[650px] w-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
         {!TOKEN && <div className="absolute inset-0 flex items-center justify-center text-red-600 bg-red-50 z-50">Missing Mapbox Token</div>}
 
-        {/* Status (Bottom Left) */}
         <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-mono z-10 pointer-events-none">
             {status}
         </div>
 
-        {/* Legend (Bottom Right) */}
         <div className="absolute bottom-8 right-2 md:right-4 z-10 bg-white/95 backdrop-blur shadow-lg rounded-lg border border-gray-200 p-3 w-40">
             <h4 className="text-xs font-bold text-gray-500 uppercase mb-2 border-b pb-1">Wage Level Legend</h4>
             <div className="space-y-1.5">
@@ -295,18 +285,19 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                         </div>
                         
                         <div className="space-y-2">
+                            {/* UPDATED: Clean labels instead of confusing math */}
                             <WageRow level={4} amount={activePopup.properties.l4} userSalary={userSalary} 
-                                odds="4 Entries" prob="~61%" impact="+107% Chance" />
+                                odds="4 Entries" prob="~61%" impact="Excellent" />
                             <WageRow level={3} amount={activePopup.properties.l3} userSalary={userSalary} 
-                                odds="3 Entries" prob="~46%" impact="+55% Chance" />
+                                odds="3 Entries" prob="~46%" impact="Good Odds" />
                             <WageRow level={2} amount={activePopup.properties.l2} userSalary={userSalary} 
-                                odds="2 Entries" prob="~30%" impact="+3% Chance" />
+                                odds="2 Entries" prob="~30%" impact="Fair" />
                             <WageRow level={1} amount={activePopup.properties.l1} userSalary={userSalary} 
-                                odds="1 Entry" prob="~15%" impact="-48% Chance" />
+                                odds="1 Entry" prob="~15%" impact="Very Low" />
                         </div>
 
                         <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] text-gray-400 leading-tight">
-                            *Probabilities based on DHS Docket No. USCIS-2025-0040.
+                            *Projected probabilities based on DHS Docket No. USCIS-2025-0040.
                         </div>
                     </div>
                 </Popup>
@@ -317,25 +308,36 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   );
 }
 
+// UPDATED: WageRow now displays the clean Qualitative Badge
 function WageRow({ level, amount, userSalary, odds, prob, impact }: any) {
     const isCovered = userSalary >= amount;
     const rowClass = isCovered ? "opacity-100" : "opacity-40 grayscale";
-    const badgeColor = isCovered 
-        ? (level >= 3 ? "bg-green-50 text-green-700 border-green-200" : (level === 2 ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-red-50 text-red-700 border-red-100"))
-        : "bg-gray-50 text-gray-500 border-gray-100";
+    
+    // Determine badge style based on Level, not just covered status
+    let badgeStyle = "bg-gray-100 text-gray-500 border-gray-200"; // Default
+    if (isCovered) {
+        if (level === 4) badgeStyle = "bg-green-100 text-green-800 border-green-200";
+        else if (level === 3) badgeStyle = "bg-blue-50 text-blue-700 border-blue-200";
+        else if (level === 2) badgeStyle = "bg-yellow-50 text-yellow-700 border-yellow-200";
+        else if (level === 1) badgeStyle = "bg-red-50 text-red-700 border-red-200";
+    }
 
     return (
-        <div className={`flex justify-between items-center ${rowClass} transition-all duration-200`}>
+        <div className={`flex justify-between items-center ${rowClass} transition-all duration-200 py-1`}>
             <div className="flex flex-col w-20">
                 <span className="font-bold text-gray-800 text-xs">Level {level}</span>
                 <span className="text-[10px] text-gray-500">${amount?.toLocaleString()}</span>
             </div>
-            <div className={`flex-1 mx-2 text-[10px] font-medium text-center ${isCovered ? "text-gray-700" : "text-gray-400"}`}>
+            
+            {/* Middle: Entries (Context) */}
+            <div className="flex-1 mx-2 text-[10px] font-medium text-center text-gray-500">
                 {odds}
             </div>
-            <div className={`w-24 px-1.5 py-1 rounded border text-[10px] font-medium flex flex-col items-end ${badgeColor}`}>
-                <span className="font-bold">{prob} Win Rate</span>
-                <span className="text-[9px] opacity-80">{impact}</span>
+
+            {/* Right: Probability & Verdict */}
+            <div className={`w-24 px-2 py-1 rounded border text-right flex flex-col ${badgeStyle}`}>
+                <span className="font-bold text-xs">{prob} Chance</span>
+                <span className="text-[9px] uppercase tracking-wide font-bold opacity-90">{impact}</span>
             </div>
         </div>
     );
