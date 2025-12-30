@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl, MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import bbox from "@turf/bbox"; 
+import { featureCollection } from "@turf/helpers"; // You might need to install @turf/helpers if not present, or just mock the object structure
 import { ChevronDown, MapPin, Briefcase } from "lucide-react";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -80,6 +81,38 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
   }, [socCode, userSalary]);
 
+  // --- NEW: HANDLE STATE ZOOM ---
+  const handleJumpToState = (stateCode: string) => {
+      if (!mergedData || !mapRef.current) return;
+
+      // Filter all features belonging to this state
+      const stateFeatures = mergedData.features.filter((f: any) => f.properties.s === stateCode);
+
+      if (stateFeatures.length > 0) {
+          try {
+              // Calculate bbox for the entire state
+              // We construct a temporary FeatureCollection for turf/bbox
+              const [minLng, minLat, maxLng, maxLat] = bbox({
+                  type: "FeatureCollection",
+                  features: stateFeatures
+              });
+
+              mapRef.current.fitBounds(
+                  [[minLng, minLat], [maxLng, maxLat]],
+                  { 
+                      padding: 40, 
+                      duration: 1500 
+                  }
+              );
+              // Clear selection when zooming out to state level
+              setSelectedInfo(null);
+          } catch (e) {
+              console.error("State zoom error", e);
+          }
+      }
+  };
+
+  // --- UPDATED: HANDLE COUNTY ZOOM (With Asymmetric Padding) ---
   const handleJumpToCounty = (fips: string) => {
       if (!mergedData || !mapRef.current) return;
       
@@ -90,9 +123,17 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
       if (feature) {
           try {
              const [minLng, minLat, maxLng, maxLat] = bbox(feature);
+             
+             // UX FIX: Asymmetric padding
+             // Top: 320px (Leaves huge room for tooltip)
+             // Bottom: 50px (Keeps county visible)
              mapRef.current.fitBounds(
                  [[minLng, minLat], [maxLng, maxLat]],
-                 { padding: 50, duration: 2000 }
+                 { 
+                     padding: { top: 320, bottom: 50, left: 50, right: 50 }, 
+                     maxZoom: 9.5, // slightly higher than 9 but safe
+                     duration: 2000 
+                 }
              );
 
              setSelectedInfo({
@@ -122,22 +163,21 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
     paint: { "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.5 }
   };
 
-  // --- NEW: TEXT LAYER WITH HALO ---
   const labelLayer = {
     id: "county-label",
     type: "symbol" as const,
-    minzoom: 5.5, // Only show labels when zoomed in to avoid clutter
+    minzoom: 5.5, 
     layout: {
-      "text-field": ["get", "c"], // Display County Name
+      "text-field": ["get", "c"], 
       "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
       "text-size": 11,
       "text-anchor": "center",
       "text-max-width": 6
     },
     paint: {
-      "text-color": "#111827", // Almost Black
-      "text-halo-color": "#ffffff", // White Halo
-      "text-halo-width": 2, // Thickness of halo
+      "text-color": "#111827", 
+      "text-halo-color": "#ffffff", 
+      "text-halo-width": 2, 
       "text-halo-blur": 0.5
     }
   };
@@ -170,8 +210,11 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                 <select 
                     value={selectedState}
                     onChange={(e) => {
-                        setSelectedState(e.target.value);
+                        const newState = e.target.value;
+                        setSelectedState(newState);
                         setSelectedCountyFips(""); 
+                        // Trigger State Zoom
+                        if (newState) handleJumpToState(newState);
                     }}
                     className="appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8 cursor-pointer font-medium"
                 >
@@ -282,7 +325,6 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             <Source type="geojson" data={mergedData as any}>
                 <Layer {...fillLayer as any} /> 
                 <Layer {...borderLayer as any} />
-                {/* NEW: LABEL LAYER ADDED HERE */}
                 <Layer {...labelLayer as any} />
             </Source>
             )}
