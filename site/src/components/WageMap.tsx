@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Map, { Source, Layer, FillLayer, LineLayer, Popup, NavigationControl, GeolocateControl } from "react-map-gl";
+import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
 
-// Added 'jobTitle' to props
 export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: string, jobTitle: string, userSalary: number }) {
   const [mergedData, setMergedData] = useState<any>(null);
   const [hoverInfo, setHoverInfo] = useState<any>(null);
@@ -51,18 +50,20 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
   }, [socCode, userSalary]);
 
-  const fillLayer: FillLayer = {
+  // --- THE FIX: Removed ': FillLayer' type annotation ---
+  const fillLayer = {
     id: "county-fill",
-    type: "fill",
+    type: "fill" as const, // 'as const' makes TS happy about the specific string
     paint: {
       "fill-color": ["get", "calculatedColor"], 
       "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.8]
     }
   };
 
-  const borderLayer: LineLayer = {
+  // --- THE FIX: Removed ': LineLayer' type annotation ---
+  const borderLayer = {
     id: "county-outline",
-    type: "line",
+    type: "line" as const,
     paint: { "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.5 }
   };
 
@@ -72,18 +73,14 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
     <div className="h-[650px] w-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
       {!TOKEN && <div className="absolute inset-0 flex items-center justify-center text-red-600 bg-red-50 z-50">Missing Mapbox Token</div>}
       
-      {/* --- UI CLEANUP START --- */}
-
       {/* 1. TOP LEFT: Context Header (Job + Rule) */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 max-w-sm pointer-events-none">
-        {/* Job Title Badge */}
         <div className="bg-white/95 backdrop-blur shadow-md px-4 py-3 rounded-lg border-l-4 border-blue-600">
             <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Current Role</p>
             <h2 className="text-lg font-bold text-gray-900 leading-tight">{jobTitle}</h2>
             <p className="text-xs text-gray-400 mt-1 font-mono">{socCode}</p>
         </div>
 
-        {/* The Rule Ribbon (Moved here) */}
         <div className="bg-blue-600/90 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm inline-block self-start">
            ⚖️ FY2027 Rule: Weighted Selection
         </div>
@@ -93,11 +90,6 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
       <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-mono z-10 pointer-events-none">
         {status}
       </div>
-
-      {/* 3. TOP RIGHT: Controls Only */}
-      {/* NavigationControl and GeolocateControl are placed automatically by Mapbox in 'top-right' */}
-      
-      {/* --- UI CLEANUP END --- */}
 
       <Map
         initialViewState={{ longitude: -96, latitude: 37.8, zoom: 3.5 }}
@@ -141,8 +133,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
         {mergedData && (
           <Source type="geojson" data={mergedData as any}>
-             <Layer {...fillLayer} />
-             <Layer {...borderLayer} />
+             <Layer {...fillLayer as any} /> 
+             <Layer {...borderLayer as any} />
           </Source>
         )}
 
