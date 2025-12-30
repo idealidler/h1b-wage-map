@@ -13,7 +13,7 @@ export default function JobSearch({
   initialValue 
 }: { 
   onSelect: (soc: string, title: string) => void,
-  initialValue?: string // New optional prop for auto-filling
+  initialValue?: string 
 }) {
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -22,7 +22,6 @@ export default function JobSearch({
   
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // 1. Fetch Job Index
   useEffect(() => {
     fetch("/job-index.json")
       .then((res) => res.json())
@@ -37,17 +36,13 @@ export default function JobSearch({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 2. NEW: Sync Input with URL/Parent State
-  // This makes sure if the map sets the title, the search box shows it.
   useEffect(() => {
     if (initialValue) {
         setQuery(initialValue);
     }
   }, [initialValue]);
 
-  // 3. Filter Logic
   useEffect(() => {
-    // Prevent dropdown from opening if we just auto-filled the value
     if (initialValue && query === initialValue) {
         setIsOpen(false);
         return;
@@ -73,7 +68,8 @@ export default function JobSearch({
   };
 
   return (
-    <div className="relative w-full z-50" ref={wrapperRef}>
+    // FIX: z-[100] ensures this sits on top of everything
+    <div className="relative w-full z-[100]" ref={wrapperRef}>
       <div className="relative">
         <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
         <input
@@ -86,13 +82,11 @@ export default function JobSearch({
              if (filtered.length > 0) setIsOpen(true);
           }}
         />
-        {/* Clear Button */}
         {query.length > 0 && (
             <button 
                 onClick={() => { 
                     setQuery(""); 
                     setIsOpen(false); 
-                    // Optional: Reset parent state if needed, but usually safe to leave alone until new selection
                 }}
                 className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
             >
@@ -102,7 +96,7 @@ export default function JobSearch({
       </div>
 
       {isOpen && filtered.length > 0 && (
-        <ul className="absolute w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+        <ul className="absolute w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 z-[100]">
           {filtered.map((job) => (
             <li
               key={job.soc}
