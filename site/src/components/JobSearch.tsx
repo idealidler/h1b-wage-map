@@ -1,35 +1,24 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Search, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search } from "lucide-react";
 
 interface Job {
   soc: string;
   title: string;
 }
 
-export default function JobSearch({ onSelect }: { onSelect: (soc: string) => void }) {
+// UPDATE: onSelect now accepts the Title as a second argument
+export default function JobSearch({ onSelect }: { onSelect: (soc: string, title: string) => void }) {
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filtered, setFiltered] = useState<Job[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Ref to handle clicking outside
-  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/job-index.json")
       .then((res) => res.json())
       .then((data) => setJobs(data));
-      
-    // Close dropdown if clicking outside
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -45,44 +34,33 @@ export default function JobSearch({ onSelect }: { onSelect: (soc: string) => voi
   }, [query, jobs]);
 
   return (
-    <div ref={wrapperRef} className="relative w-full z-50">
+    <div className="relative w-full z-50">
       <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
         <input
           type="text"
-          placeholder="Search job (e.g. Manager)..."
-          className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-gray-900 font-medium transition-all"
+          placeholder="Search job (e.g. Software Developer)..."
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
           value={query}
-          onChange={(e) => {
-              setQuery(e.target.value);
-              setIsOpen(true);
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
         />
-        {query && (
-            <button 
-                onClick={() => { setQuery(""); setIsOpen(false); }}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-            >
-                <X className="w-4 h-4" />
-            </button>
-        )}
       </div>
 
       {isOpen && filtered.length > 0 && (
-        <ul className="absolute w-full bg-white mt-2 border border-gray-100 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1">
+        <ul className="absolute w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
           {filtered.map((job) => (
             <li
               key={job.soc}
-              className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-gray-700 border-b border-gray-50 last:border-0 transition-colors flex flex-col"
+              className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-gray-700 border-b border-gray-100 last:border-0"
               onClick={() => {
-                setQuery(job.title); // Update input with full name
-                onSelect(job.soc);   // Trigger parent update
-                setIsOpen(false);    // <--- THIS FIXES THE ISSUE
+                setQuery(job.title || "Unknown Job");
+                onSelect(job.soc, job.title); // Pass BOTH code and title
+                setIsOpen(false);
               }}
             >
-              <span className="text-sm font-semibold text-gray-800">{job.title}</span>
-              <span className="text-xs text-gray-400">Code: {job.soc}</span>
+              <div className="font-medium">{job.title}</div>
+              <div className="text-xs text-gray-400">{job.soc}</div>
             </li>
           ))}
         </ul>
