@@ -134,7 +134,7 @@ function WageMapContent() {
                         className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 rounded-full text-sm font-semibold text-gray-700 hover:text-blue-700 hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm"
                     >
                         <BookOpen className="w-4 h-4" />
-                        View Official Rules & Guidelines
+                        View Website Navigation Dialog Box
                     </button>
                 )}
             </div>
