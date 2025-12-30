@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Search, ChevronRight, Info, AlertTriangle, Bot, Briefcase, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Search, ChevronRight, Info, AlertTriangle, Bot, FileText, CheckCircle2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 export default function FindSocPage() {
@@ -41,7 +41,7 @@ export default function FindSocPage() {
   return (
     <main className="min-h-screen bg-white flex flex-col font-sans text-gray-900">
       
-      {/* 1. TOP NAVIGATION BAR (Consistent with Main Page Header) */}
+      {/* 1. TOP NAVIGATION BAR */}
       <div className="border-b border-gray-100 bg-white sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-4">
             <Link 
@@ -62,7 +62,7 @@ export default function FindSocPage() {
           </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-10 w-full space-y-10 flex-grow">
+      <div className="max-w-3xl mx-auto px-6 py-10 w-full space-y-8 flex-grow">
         
         {/* 2. HERO SECTION */}
         <div className="text-center space-y-4">
@@ -74,7 +74,22 @@ export default function FindSocPage() {
             </p>
         </div>
 
-        {/* 3. INPUT CARD (Styled like Main Page Controls) */}
+        {/* --- NEW ADDITION: API LIMIT DISCLAIMER --- */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-900">
+                <p className="font-bold mb-1">Trial API Limit Notice</p>
+                <p className="leading-relaxed text-amber-800/90">
+                    This tool runs on a trial API with strict daily limits. If results fail to load, the limit has likely been reached. 
+                    Please try <a href="https://chatgpt.com" target="_blank" className="underline font-semibold hover:text-amber-950">ChatGPT</a> or 
+                    <a href="https://gemini.google.com" target="_blank" className="underline font-semibold hover:text-amber-950 ml-1">Gemini</a> directly 
+                    to find your SOC code.
+                </p>
+            </div>
+        </div>
+        {/* ------------------------------------------ */}
+
+        {/* 3. INPUT CARD */}
         <div className="bg-white p-1 rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="relative">
                 <textarea 
@@ -123,7 +138,7 @@ Example: 'I develop web applications using React and Node.js. I deploy to AWS, m
             </div>
         </div>
 
-        {/* 4. RESULTS SECTION (Styled like Search Results) */}
+        {/* 4. RESULTS SECTION */}
         {results.length > 0 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center gap-4">
