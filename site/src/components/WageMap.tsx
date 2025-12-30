@@ -122,12 +122,32 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
     paint: { "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.5 }
   };
 
+  // --- NEW: TEXT LAYER WITH HALO ---
+  const labelLayer = {
+    id: "county-label",
+    type: "symbol" as const,
+    minzoom: 5.5, // Only show labels when zoomed in to avoid clutter
+    layout: {
+      "text-field": ["get", "c"], // Display County Name
+      "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+      "text-size": 11,
+      "text-anchor": "center",
+      "text-max-width": 6
+    },
+    paint: {
+      "text-color": "#111827", // Almost Black
+      "text-halo-color": "#ffffff", // White Halo
+      "text-halo-width": 2, // Thickness of halo
+      "text-halo-blur": 0.5
+    }
+  };
+
   const activePopup = selectedInfo || hoverInfo;
 
   return (
     <div className="flex flex-col gap-4">
       
-      {/* --- DASHBOARD HEADER --- */}
+      {/* DASHBOARD HEADER */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
         <div className="md:col-span-4 flex items-center gap-3 border-b md:border-b-0 md:border-r border-gray-100 pb-3 md:pb-0 md:pr-4">
              <div className="bg-blue-100 p-2 rounded-lg">
@@ -184,7 +204,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
         </div>
       </div>
 
-      {/* --- MAP --- */}
+      {/* MAP */}
       <div className="h-[650px] w-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
         {!TOKEN && <div className="absolute inset-0 flex items-center justify-center text-red-600 bg-red-50 z-50">Missing Mapbox Token</div>}
 
@@ -262,6 +282,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             <Source type="geojson" data={mergedData as any}>
                 <Layer {...fillLayer as any} /> 
                 <Layer {...borderLayer as any} />
+                {/* NEW: LABEL LAYER ADDED HERE */}
+                <Layer {...labelLayer as any} />
             </Source>
             )}
 
@@ -285,7 +307,6 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                         </div>
                         
                         <div className="space-y-2">
-                            {/* UPDATED: Clean labels instead of confusing math */}
                             <WageRow level={4} amount={activePopup.properties.l4} userSalary={userSalary} 
                                 odds="4 Entries" prob="~61%" impact="Excellent" />
                             <WageRow level={3} amount={activePopup.properties.l3} userSalary={userSalary} 
@@ -308,13 +329,11 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   );
 }
 
-// UPDATED: WageRow now displays the clean Qualitative Badge
 function WageRow({ level, amount, userSalary, odds, prob, impact }: any) {
     const isCovered = userSalary >= amount;
     const rowClass = isCovered ? "opacity-100" : "opacity-40 grayscale";
     
-    // Determine badge style based on Level, not just covered status
-    let badgeStyle = "bg-gray-100 text-gray-500 border-gray-200"; // Default
+    let badgeStyle = "bg-gray-100 text-gray-500 border-gray-200";
     if (isCovered) {
         if (level === 4) badgeStyle = "bg-green-100 text-green-800 border-green-200";
         else if (level === 3) badgeStyle = "bg-blue-50 text-blue-700 border-blue-200";
@@ -329,12 +348,10 @@ function WageRow({ level, amount, userSalary, odds, prob, impact }: any) {
                 <span className="text-[10px] text-gray-500">${amount?.toLocaleString()}</span>
             </div>
             
-            {/* Middle: Entries (Context) */}
             <div className="flex-1 mx-2 text-[10px] font-medium text-center text-gray-500">
                 {odds}
             </div>
 
-            {/* Right: Probability & Verdict */}
             <div className={`w-24 px-2 py-1 rounded border text-right flex flex-col ${badgeStyle}`}>
                 <span className="font-bold text-xs">{prob} Chance</span>
                 <span className="text-[9px] uppercase tracking-wide font-bold opacity-90">{impact}</span>
