@@ -7,7 +7,7 @@
 
 An interactive geospatial tool designed to help H-1B applicants navigate the new **FY 2027 Weighted Selection Rule**.
 
-**[🔴 Live Demo]([https://your-project-name.vercel.app](https://h1b-wage-map.vercel.app))**
+**[🔴 Screenshot]([https://your-project-name.vercel.app](https://h1b-wage-map.vercel.app))**
 
 <img width="2880" height="1800" alt="image" src="https://github.com/user-attachments/assets/0e49c694-55f2-467c-900c-65150a77a682" />
 
