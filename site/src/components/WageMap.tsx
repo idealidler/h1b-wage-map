@@ -50,17 +50,15 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
   }, [socCode, userSalary]);
 
-  // --- THE FIX: Removed ': FillLayer' type annotation ---
   const fillLayer = {
     id: "county-fill",
-    type: "fill" as const, // 'as const' makes TS happy about the specific string
+    type: "fill" as const,
     paint: {
       "fill-color": ["get", "calculatedColor"], 
       "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.8]
     }
   };
 
-  // --- THE FIX: Removed ': LineLayer' type annotation ---
   const borderLayer = {
     id: "county-outline",
     type: "line" as const,
@@ -73,7 +71,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
     <div className="h-[650px] w-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
       {!TOKEN && <div className="absolute inset-0 flex items-center justify-center text-red-600 bg-red-50 z-50">Missing Mapbox Token</div>}
       
-      {/* 1. TOP LEFT: Context Header (Job + Rule) */}
+      {/* 1. TOP LEFT: Context Header */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 max-w-sm pointer-events-none">
         <div className="bg-white/95 backdrop-blur shadow-md px-4 py-3 rounded-lg border-l-4 border-blue-600">
             <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Current Role</p>
@@ -86,9 +84,36 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
         </div>
       </div>
 
-      {/* 2. BOTTOM LEFT: Status (Subtle) */}
+      {/* 2. BOTTOM LEFT: Status */}
       <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-mono z-10 pointer-events-none">
         {status}
+      </div>
+
+      {/* 3. NEW: LEGEND (Bottom Right) */}
+      <div className="absolute bottom-8 right-2 md:right-4 z-10 bg-white/95 backdrop-blur shadow-lg rounded-lg border border-gray-200 p-3 w-40">
+          <h4 className="text-xs font-bold text-gray-500 uppercase mb-2 border-b pb-1">Wage Level Legend</h4>
+          <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#10b981]"></span>
+                  <span className="text-xs font-semibold text-gray-800">Level 4 (Safe)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#3b82f6]"></span>
+                  <span className="text-xs font-semibold text-gray-800">Level 3 (Good)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span>
+                  <span className="text-xs font-semibold text-gray-800">Level 2 (Fair)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#ef4444]"></span>
+                  <span className="text-xs font-semibold text-gray-800">Level 1 (Risky)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#e5e7eb] border border-gray-300"></span>
+                  <span className="text-xs text-gray-400">No Data / Low</span>
+              </div>
+          </div>
       </div>
 
       <Map

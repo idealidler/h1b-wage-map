@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+// 1. Import Analytics
+import { Analytics } from "@vercel/analytics/react";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "H1-B Wage Level Map",
-  description: "The Map can help you find your wage level based on different counties",
+  title: "H-1B Wage Map 2027 | Weighted Selection Tool",
+  description: "Check your H-1B lottery odds under the new FY2027 Weighted Selection Rule. Interactive map of DOL wage levels and selection probability.",
 };
 
 export default function RootLayout({
@@ -24,10 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={inter.className}>
         {children}
+        {/* 2. Add the component here */}
+        <Analytics />
       </body>
     </html>
   );
