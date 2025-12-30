@@ -8,21 +8,26 @@ interface Job {
   title: string;
 }
 
-export default function JobSearch({ onSelect }: { onSelect: (soc: string, title: string) => void }) {
+export default function JobSearch({ 
+  onSelect, 
+  initialValue 
+}: { 
+  onSelect: (soc: string, title: string) => void,
+  initialValue?: string // New optional prop for auto-filling
+}) {
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filtered, setFiltered] = useState<Job[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   
-  // Ref to detect clicks outside the component
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // 1. Fetch Job Index
   useEffect(() => {
     fetch("/job-index.json")
       .then((res) => res.json())
       .then((data) => setJobs(data));
 
-    // Event listener to close dropdown if clicked outside
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -32,24 +37,39 @@ export default function JobSearch({ onSelect }: { onSelect: (soc: string, title:
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // 2. NEW: Sync Input with URL/Parent State
+  // This makes sure if the map sets the title, the search box shows it.
   useEffect(() => {
+    if (initialValue) {
+        setQuery(initialValue);
+    }
+  }, [initialValue]);
+
+  // 3. Filter Logic
+  useEffect(() => {
+    // Prevent dropdown from opening if we just auto-filled the value
+    if (initialValue && query === initialValue) {
+        setIsOpen(false);
+        return;
+    }
+
     if (query.length < 2) {
       setFiltered([]);
-      setIsOpen(false); // Close if query is empty
+      setIsOpen(false);
       return;
     }
     const matches = jobs
       .filter((j) => j.title && j.title.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 10);
     setFiltered(matches);
-    // Only open if we have matches and the user is typing
+    
     if (matches.length > 0) setIsOpen(true);
-  }, [query, jobs]);
+  }, [query, jobs, initialValue]);
 
   const handleSelect = (job: Job) => {
     setQuery(job.title);
     onSelect(job.soc, job.title);
-    setIsOpen(false); // Force close immediately
+    setIsOpen(false);
   };
 
   return (
@@ -59,19 +79,22 @@ export default function JobSearch({ onSelect }: { onSelect: (soc: string, title:
         <input
           type="text"
           placeholder="Search job (e.g. Software Developer)..."
-          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
+          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black transition-all"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
-             // Only open if we already have results
              if (filtered.length > 0) setIsOpen(true);
           }}
         />
         {/* Clear Button */}
         {query.length > 0 && (
             <button 
-                onClick={() => { setQuery(""); setIsOpen(false); }}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                onClick={() => { 
+                    setQuery(""); 
+                    setIsOpen(false); 
+                    // Optional: Reset parent state if needed, but usually safe to leave alone until new selection
+                }}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
             >
                 <X className="h-5 w-5" />
             </button>
@@ -79,7 +102,7 @@ export default function JobSearch({ onSelect }: { onSelect: (soc: string, title:
       </div>
 
       {isOpen && filtered.length > 0 && (
-        <ul className="absolute w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+        <ul className="absolute w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
           {filtered.map((job) => (
             <li
               key={job.soc}
