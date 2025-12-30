@@ -3,8 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import JobSearch from "@/components/JobSearch";
 import WageMap from "@/components/WageMap";
-// --- THE FIX: Added 'Sparkles' to this import list ---
-import { Info, TrendingUp, AlertTriangle, Calendar, Linkedin, Github, DollarSign, Sparkles } from "lucide-react";
+import { Info, TrendingUp, AlertTriangle, Calendar, Linkedin, Github, DollarSign, Sparkles, MapPin } from "lucide-react";
 
 function WageMapContent() {
     const searchParams = useSearchParams();
@@ -111,7 +110,7 @@ function WageMapContent() {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-orange-500" />
-                        Critical Facts: What counts as "Wage"?
+                        Critical Facts & Compliance
                     </h3>
                      <ul className="space-y-3 text-sm text-gray-600">
                         <li className="border-l-2 border-purple-400 pl-3 bg-purple-50/50 py-1 rounded-r">
@@ -121,9 +120,15 @@ function WageMapContent() {
                                 Do NOT include RSUs (Stocks), Sign-on Bonuses, or Performance Bonuses. These do not count toward the wage level (20 CFR § 655.731).
                             </span>
                         </li>
-                        <li className="border-l-2 border-orange-200 pl-3">
-                            <strong>Remote Work Rule:</strong> If you work remotely, your lottery odds are determined by the wage level of your <span className="text-orange-600 font-semibold">home address</span> (not the HQ).
+                        
+                        {/* NEW: MULTIPLE LOCATIONS RULE */}
+                        <li className="border-l-2 border-red-400 pl-3 bg-red-50/50 py-1 rounded-r">
+                            <strong>Multiple Locations / Hybrid Rule:</strong>
+                            <br/>
+                            If the beneficiary will work in multiple locations (e.g. Hybrid, Roving), the lottery selection is based on the <span className="text-red-700 font-bold">lowest corresponding wage level</span> among all intended worksites.
+                            <span className="text-gray-400 font-mono text-[10px] block mt-1">Source: DHS Docket No. USCIS-2025-0040</span>
                         </li>
+
                         <li className="border-l-2 border-blue-200 pl-3">
                             <strong>No "Pay to Play":</strong> You cannot simply raise a salary to match Level 4. The job duties (experience/education) must actually match the Senior Level description.
                         </li>
