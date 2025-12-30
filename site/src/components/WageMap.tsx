@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl, MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import bbox from "@turf/bbox"; 
-import { featureCollection } from "@turf/helpers"; // You might need to install @turf/helpers if not present, or just mock the object structure
 import { ChevronDown, MapPin, Briefcase } from "lucide-react";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -81,17 +80,14 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
   }, [socCode, userSalary]);
 
-  // --- NEW: HANDLE STATE ZOOM ---
+  // --- HANDLE STATE ZOOM ---
   const handleJumpToState = (stateCode: string) => {
       if (!mergedData || !mapRef.current) return;
 
-      // Filter all features belonging to this state
       const stateFeatures = mergedData.features.filter((f: any) => f.properties.s === stateCode);
 
       if (stateFeatures.length > 0) {
           try {
-              // Calculate bbox for the entire state
-              // We construct a temporary FeatureCollection for turf/bbox
               const [minLng, minLat, maxLng, maxLat] = bbox({
                   type: "FeatureCollection",
                   features: stateFeatures
@@ -99,12 +95,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
               mapRef.current.fitBounds(
                   [[minLng, minLat], [maxLng, maxLat]],
-                  { 
-                      padding: 40, 
-                      duration: 1500 
-                  }
+                  { padding: 40, duration: 1500 }
               );
-              // Clear selection when zooming out to state level
               setSelectedInfo(null);
           } catch (e) {
               console.error("State zoom error", e);
@@ -112,7 +104,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
       }
   };
 
-  // --- UPDATED: HANDLE COUNTY ZOOM (With Asymmetric Padding) ---
+  // --- HANDLE COUNTY ZOOM (With Asymmetric Padding) ---
   const handleJumpToCounty = (fips: string) => {
       if (!mergedData || !mapRef.current) return;
       
@@ -124,14 +116,12 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
           try {
              const [minLng, minLat, maxLng, maxLat] = bbox(feature);
              
-             // UX FIX: Asymmetric padding
-             // Top: 320px (Leaves huge room for tooltip)
-             // Bottom: 50px (Keeps county visible)
+             // UX FIX: Top padding 320 ensures tooltip has space above the county
              mapRef.current.fitBounds(
                  [[minLng, minLat], [maxLng, maxLat]],
                  { 
                      padding: { top: 320, bottom: 50, left: 50, right: 50 }, 
-                     maxZoom: 9.5, // slightly higher than 9 but safe
+                     maxZoom: 9.5, 
                      duration: 2000 
                  }
              );
@@ -213,7 +203,6 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                         const newState = e.target.value;
                         setSelectedState(newState);
                         setSelectedCountyFips(""); 
-                        // Trigger State Zoom
                         if (newState) handleJumpToState(newState);
                     }}
                     className="appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8 cursor-pointer font-medium"
@@ -288,6 +277,15 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             mapStyle="mapbox://styles/mapbox/light-v11"
             mapboxAccessToken={TOKEN}
             interactiveLayerIds={['county-fill']}
+            // --- NEW: CLOSE TOOLTIP ON USER INTERACTION ---
+            onMove={(evt) => {
+                // evt.originalEvent is undefined if the move was programmatic (auto-zoom)
+                // evt.originalEvent is DEFINED if the move was by mouse/touch/scroll (user)
+                if (evt.originalEvent && selectedInfo) {
+                    setSelectedInfo(null);
+                }
+            }}
+            // ----------------------------------------------
             onMouseMove={(event) => {
                 if (selectedInfo) return; 
                 const { features, lngLat } = event;

@@ -83,7 +83,7 @@ export default function FindSocPage() {
                     This tool runs on a trial API with strict daily limits. If results fail to load, the limit has likely been reached. 
                     Please try <a href="https://chatgpt.com" target="_blank" className="underline font-semibold hover:text-amber-950">ChatGPT</a> or 
                     <a href="https://gemini.google.com" target="_blank" className="underline font-semibold hover:text-amber-950 ml-1">Gemini</a> directly 
-                    to find your SOC code.
+                    to get an idea about your SOC code.
                 </p>
             </div>
         </div>

@@ -49,7 +49,7 @@ function ComplianceModal({ onClose }: { onClose: () => void }) {
                         <div className="flex gap-3 items-start">
                             <CheckCircle2 className="w-5 h-5 text-green-700 flex-shrink-0 mt-0.5" />
                             <div className="text-sm text-gray-800">
-                                <span className="font-bold text-gray-900">The Consistency Mandate:</span> If selected as Level 4, you <u>cannot</u> downgrade to Level 2 later. Your petition must match your registration.
+                                <span className="font-bold text-gray-900">The Binding Wage Rule:</span> Your registration wage level acts as a binding minimum. If selected, your final petition <u>must</u> be filed at that same level or higher. You cannot "win" at Level 4 and file at Level 2; such petitions will be <strong className="text-red-700">automatically denied</strong>.
                             </div>
                         </div>
                          <div className="flex gap-3 items-start">
@@ -288,7 +288,7 @@ function WageMapContent() {
                         Data Source: DOL FLC Data Center (July 2025) & DHS Docket No. USCIS-2025-0040.
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                        Not legal advice. For informational purposes only.
+                        Not legal advice. For informational purposes only. Please check the OFLC Wage Seach tool for confirming the data.
                     </p>
                 </div>
 
