@@ -66,16 +66,25 @@ export default function FindSocPage() {
                 placeholder="Example: I build React applications using Next.js. I also manage AWS infrastructure and write Python scripts for data analysis..."
             />
             
-            <div className="flex justify-end">
+            <div className="flex justify-end items-center gap-4">
+                {/* Show a subtle spinner while thinking */}
+                {loading && <span className="text-sm text-purple-600 animate-pulse font-medium">Analyzing duties...</span>}
+    
                 <button
                     onClick={handleAnalyze}
                     disabled={loading || !input.trim()}
                     className={`px-6 py-3 rounded-lg font-semibold text-white transition-all flex items-center gap-2
-                        ${loading || !input.trim() ? "bg-gray-300 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg"}
+                        ${loading || !input.trim() 
+                            ? "bg-gray-300 cursor-not-allowed" 
+                            : "bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                        }
                     `}
                 >
                     {loading ? (
-                        <>Analyzing...</>
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Thinking...</span>
+                        </div>
                     ) : (
                         <>
                             <Search className="w-4 h-4" /> Analyze Description
