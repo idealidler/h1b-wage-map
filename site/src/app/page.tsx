@@ -116,7 +116,7 @@ function WageMapContent() {
             {/* HEADER */}
             <div className="text-center space-y-5 max-w-3xl mx-auto">
                 <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
-                    H-1B Wage Map <span className="text-blue-700">2027</span> 🇺🇸
+                    H-1B Wage Map <span className="text-blue-700">FY 2027</span> 🇺🇸
                 </h1>
                 
                 <div className="bg-blue-50 border border-blue-200 p-5 rounded-xl text-sm leading-relaxed shadow-sm">

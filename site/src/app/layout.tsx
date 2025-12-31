@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "H-1B Wage Map 2027 | Weighted Selection Tool",
+  title: "H-1B Wage Map FY 2027 | Weighted Selection Tool",
   description: "Check your H-1B lottery odds under the new FY2027 Weighted Selection Rule. Interactive map of DOL wage levels and selection probability.",
 };
 
