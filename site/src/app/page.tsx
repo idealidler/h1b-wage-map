@@ -150,7 +150,7 @@ function WageMapContent() {
                     </div>
                     
                     <JobSearch 
-                        key={selectedSoc} 
+                       
                         initialValue={jobTitle} 
                         onSelect={(soc, title) => {
                             setSelectedSoc(soc);
