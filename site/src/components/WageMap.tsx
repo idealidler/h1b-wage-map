@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl, MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import bbox from "@turf/bbox"; 
-import { ChevronDown, MapPin, Briefcase } from "lucide-react";
+import { ChevronDown, MapPin, Briefcase, TrendingUp, CheckCircle2 } from "lucide-react";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
@@ -43,6 +43,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
         let color = "#e5e7eb"; 
         if (countyWages) {
             feature.properties = { ...feature.properties, ...countyWages };
+            // Calculate User Level logic
             if (userSalary >= countyWages.l4) { color = "#10b981"; feature.properties.userLevel = 4; }
             else if (userSalary >= countyWages.l3) { color = "#3b82f6"; feature.properties.userLevel = 3; }
             else if (userSalary >= countyWages.l2) { color = "#f59e0b"; feature.properties.userLevel = 2; }
@@ -80,98 +81,53 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
   }, [socCode, userSalary]);
 
-  // --- HANDLE STATE ZOOM ---
+  // --- HELPER: Handle Zoom Logic ---
   const handleJumpToState = (stateCode: string) => {
       if (!mergedData || !mapRef.current) return;
-
       const stateFeatures = mergedData.features.filter((f: any) => f.properties.s === stateCode);
-
       if (stateFeatures.length > 0) {
           try {
-              const [minLng, minLat, maxLng, maxLat] = bbox({
-                  type: "FeatureCollection",
-                  features: stateFeatures
-              });
-
-              mapRef.current.fitBounds(
-                  [[minLng, minLat], [maxLng, maxLat]],
-                  { padding: 40, duration: 1500 }
-              );
+              const [minLng, minLat, maxLng, maxLat] = bbox({ type: "FeatureCollection", features: stateFeatures });
+              mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 40, duration: 1500 });
               setSelectedInfo(null);
-          } catch (e) {
-              console.error("State zoom error", e);
-          }
+          } catch (e) { console.error("State zoom error", e); }
       }
   };
 
-  // --- HANDLE COUNTY ZOOM (With Asymmetric Padding) ---
   const handleJumpToCounty = (fips: string) => {
       if (!mergedData || !mapRef.current) return;
-      
-      const feature = mergedData.features.find((f: any) => 
-        parseInt(f.id, 10) === parseInt(fips, 10) || f.id === fips
-      );
-
+      const feature = mergedData.features.find((f: any) => parseInt(f.id, 10) === parseInt(fips, 10) || f.id === fips);
       if (feature) {
           try {
              const [minLng, minLat, maxLng, maxLat] = bbox(feature);
-             
-             mapRef.current.fitBounds(
-                 [[minLng, minLat], [maxLng, maxLat]],
-                 { 
-                     padding: { top: 320, bottom: 50, left: 50, right: 50 }, 
-                     maxZoom: 9.5, 
-                     duration: 2000 
-                 }
-             );
-
-             setSelectedInfo({
-                 longitude: (minLng + maxLng) / 2,
-                 latitude: (minLat + maxLat) / 2,
-                 properties: feature.properties
+             mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { 
+                 padding: { top: 320, bottom: 50, left: 50, right: 50 }, maxZoom: 9.5, duration: 2000 
              });
+             setSelectedInfo({ longitude: (minLng + maxLng) / 2, latitude: (minLat + maxLat) / 2, properties: feature.properties });
              setHoverInfo(null);
-          } catch (e) {
-              console.error("Zoom error", e);
-          }
+          } catch (e) { console.error("Zoom error", e); }
       }
   };
 
-  const fillLayer = {
-    id: "county-fill",
-    type: "fill" as const,
-    paint: {
-      "fill-color": ["get", "calculatedColor"], 
-      "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.8]
-    }
-  };
-
-  const borderLayer = {
-    id: "county-outline",
-    type: "line" as const,
-    paint: { "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.5 }
-  };
-
-  const labelLayer = {
-    id: "county-label",
-    type: "symbol" as const,
-    minzoom: 5.5, 
-    layout: {
-      "text-field": ["get", "c"], 
-      "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-      "text-size": 11,
-      "text-anchor": "center",
-      "text-max-width": 6
-    },
-    paint: {
-      "text-color": "#111827", 
-      "text-halo-color": "#ffffff", 
-      "text-halo-width": 2, 
-      "text-halo-blur": 0.5
-    }
+  // --- HELPER: CALCULATE GAP ---
+  const getNextLevelInfo = (props: any) => {
+      if (!props) return null;
+      const current = props.userLevel;
+      
+      // If below Level 1
+      if (current === 0) return { diff: props.l1 - userSalary, next: "Level 1" };
+      // If Level 1 -> 2
+      if (current === 1) return { diff: props.l2 - userSalary, next: "Level 2" };
+      // If Level 2 -> 3
+      if (current === 2) return { diff: props.l3 - userSalary, next: "Level 3" };
+      // If Level 3 -> 4
+      if (current === 3) return { diff: props.l4 - userSalary, next: "Level 4" };
+      
+      return null; // Already Max Level 4
   };
 
   const activePopup = selectedInfo || hoverInfo;
+  const gapInfo = activePopup ? getNextLevelInfo(activePopup.properties) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -194,78 +150,41 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                 <MapPin className="w-3 h-3 text-blue-600" />
                 <span>Locate County:</span>
             </div>
-            
+            {/* ... SELECTORS (Unchanged) ... */}
             <div className="relative group w-full md:w-48">
-                <select 
-                    value={selectedState}
-                    onChange={(e) => {
-                        const newState = e.target.value;
-                        setSelectedState(newState);
-                        setSelectedCountyFips(""); 
-                        if (newState) handleJumpToState(newState);
-                    }}
-                    className="appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8 cursor-pointer font-medium"
-                >
+                <select value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCountyFips(""); if(e.target.value) handleJumpToState(e.target.value); }}
+                    className="appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 block w-full p-2.5 pr-8 cursor-pointer font-medium">
                     <option value="">Select State</option>
-                    {locationList.map((loc) => (
-                        <option key={loc.state} value={loc.state}>{loc.state}</option>
-                    ))}
+                    {locationList.map((loc) => (<option key={loc.state} value={loc.state}>{loc.state}</option>))}
                 </select>
                 <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
 
             <div className="relative group w-full md:w-56">
-                <select 
-                    value={selectedCountyFips}
-                    onChange={(e) => {
-                        const fips = e.target.value;
-                        setSelectedCountyFips(fips);
-                        if (fips) handleJumpToCounty(fips);
-                    }}
-                    disabled={!selectedState}
-                    className="appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
+                <select value={selectedCountyFips} onChange={(e) => { setSelectedCountyFips(e.target.value); if(e.target.value) handleJumpToCounty(e.target.value); }} disabled={!selectedState}
+                    className="appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 block w-full p-2.5 pr-8 cursor-pointer disabled:opacity-50 font-medium">
                     <option value="">Select County</option>
-                    {selectedState && locationList.find(l => l.state === selectedState)?.counties.map((c) => (
-                        <option key={c.fips} value={c.fips}>{c.name}</option>
-                    ))}
+                    {selectedState && locationList.find(l => l.state === selectedState)?.counties.map((c) => (<option key={c.fips} value={c.fips}>{c.name}</option>))}
                 </select>
                 <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
         </div>
       </div>
 
-      {/* MAP */}
+      {/* MAP CONTAINER */}
       <div className="h-[650px] w-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
         {!TOKEN && <div className="absolute inset-0 flex items-center justify-center text-red-600 bg-red-50 z-50">Missing Mapbox Token</div>}
+        <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-mono z-10 pointer-events-none">{status}</div>
 
-        <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-[10px] font-mono z-10 pointer-events-none">
-            {status}
-        </div>
-
+        {/* LEGEND */}
         <div className="absolute bottom-8 right-2 md:right-4 z-10 bg-white/95 backdrop-blur shadow-lg rounded-lg border border-gray-200 p-3 w-40">
             <h4 className="text-xs font-bold text-gray-500 uppercase mb-2 border-b pb-1">Wage Level Legend</h4>
             <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#10b981]"></span>
-                    <span className="text-xs font-semibold text-gray-800">Level 4 (Safe)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#3b82f6]"></span>
-                    <span className="text-xs font-semibold text-gray-800">Level 3 (Good)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span>
-                    <span className="text-xs font-semibold text-gray-800">Level 2 (Fair)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#ef4444]"></span>
-                    <span className="text-xs font-semibold text-gray-800">Level 1 (Risky)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#e5e7eb] border border-gray-300"></span>
-                    <span className="text-xs text-gray-400">No Data / Low</span>
-                </div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#10b981]"></span><span className="text-xs font-semibold text-gray-800">Level 4 (Safe)</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#3b82f6]"></span><span className="text-xs font-semibold text-gray-800">Level 3 (Good)</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span><span className="text-xs font-semibold text-gray-800">Level 2 (Fair)</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#ef4444]"></span><span className="text-xs font-semibold text-gray-800">Level 1 (Risky)</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#e5e7eb] border border-gray-300"></span><span className="text-xs text-gray-400">Low / No Data</span></div>
             </div>
         </div>
 
@@ -276,39 +195,22 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             mapStyle="mapbox://styles/mapbox/light-v11"
             mapboxAccessToken={TOKEN}
             interactiveLayerIds={['county-fill']}
-            onMove={(evt) => {
-                if (evt.originalEvent && selectedInfo) {
-                    setSelectedInfo(null);
-                }
-            }}
+            onMove={(evt) => { if (evt.originalEvent && selectedInfo) setSelectedInfo(null); }}
             onMouseMove={(event) => {
                 if (selectedInfo) return; 
                 const { features, lngLat } = event;
-                const hoveredFeature = features && features[0];
-                if (hoveredFeature && hoveredFeature.properties?.l1) {
-                    setHoverInfo({
-                        longitude: lngLat.lng,
-                        latitude: lngLat.lat,
-                        properties: hoveredFeature.properties
-                    });
-                } else {
-                    setHoverInfo(null);
-                }
+                const f = features && features[0];
+                if (f && f.properties?.l1) setHoverInfo({ longitude: lngLat.lng, latitude: lngLat.lat, properties: f.properties });
+                else setHoverInfo(null);
             }}
             onMouseLeave={() => !selectedInfo && setHoverInfo(null)}
             onClick={(event) => {
                 const { features, lngLat } = event;
-                const clickedFeature = features && features[0];
-                if (clickedFeature && clickedFeature.properties?.l1) {
-                    setSelectedInfo({
-                        longitude: lngLat.lng,
-                        latitude: lngLat.lat,
-                        properties: clickedFeature.properties
-                    });
+                const f = features && features[0];
+                if (f && f.properties?.l1) {
+                    setSelectedInfo({ longitude: lngLat.lng, latitude: lngLat.lat, properties: f.properties });
                     setHoverInfo(null); 
-                } else {
-                    setSelectedInfo(null);
-                }
+                } else setSelectedInfo(null);
             }}
         >
             <GeolocateControl position="top-right" />
@@ -316,9 +218,9 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
             {mergedData && (
             <Source type="geojson" data={mergedData as any}>
-                <Layer {...fillLayer as any} /> 
-                <Layer {...borderLayer as any} />
-                <Layer {...labelLayer as any} />
+                <Layer id="county-fill" type="fill" paint={{ "fill-color": ["get", "calculatedColor"], "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.8] }} /> 
+                <Layer id="county-outline" type="line" paint={{ "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.5 }} />
+                <Layer id="county-label" type="symbol" minzoom={5.5} layout={{ "text-field": ["get", "c"], "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"], "text-size": 11, "text-anchor": "center", "text-max-width": 6 }} paint={{ "text-color": "#111827", "text-halo-color": "#ffffff", "text-halo-width": 2 }} />
             </Source>
             )}
 
@@ -341,19 +243,40 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                             </p>
                         </div>
                         
-                        <div className="space-y-2">
-                            <WageRow level={4} amount={activePopup.properties.l4} userSalary={userSalary} 
-                                odds="+107% Boost" prob="~61%" impact="Excellent" />
-                            <WageRow level={3} amount={activePopup.properties.l3} userSalary={userSalary} 
-                                odds="+55% Boost" prob="~46%" impact="Good Odds" />
-                            <WageRow level={2} amount={activePopup.properties.l2} userSalary={userSalary} 
+                        {/* WAGE ROWS - Only active level is highlighted */}
+                        <div className="space-y-1">
+                            <WageRow level={4} amount={activePopup.properties.l4} userLevel={activePopup.properties.userLevel} 
+                                odds="+107% Boost" prob="Safe" impact="Top Tier" />
+                            <WageRow level={3} amount={activePopup.properties.l3} userLevel={activePopup.properties.userLevel} 
+                                odds="+55% Boost" prob="Likely" impact="Good Odds" />
+                            <WageRow level={2} amount={activePopup.properties.l2} userLevel={activePopup.properties.userLevel} 
                                 odds="+3% Boost" prob="~30%" impact="Fair" />
-                            <WageRow level={1} amount={activePopup.properties.l1} userSalary={userSalary} 
-                                odds="-48% Drop" prob="~15%" impact="Very Low" />
+                            <WageRow level={1} amount={activePopup.properties.l1} userLevel={activePopup.properties.userLevel} 
+                                odds="-48% Drop" prob="Risky" impact="Very Low" />
                         </div>
 
-                        <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] text-gray-400 leading-tight">
-                            *Projected probabilities based on DHS Docket No. USCIS-2025-0040.
+                        {/* --- NEW SMART ACTION TOOLTIP --- */}
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            {gapInfo ? (
+                                <div className="bg-blue-50 border border-blue-100 rounded p-2 flex items-start gap-2">
+                                    <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <div className="text-[10px] uppercase font-bold text-blue-500 tracking-wider">Negotiation Tip</div>
+                                        <div className="text-xs font-semibold text-blue-900 leading-tight">
+                                            Raise offer by <span className="text-blue-700 bg-blue-100 px-1 rounded">${gapInfo.diff.toLocaleString()}</span> to reach {gapInfo.next}!
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : activePopup.properties.userLevel === 4 ? (
+                                <div className="bg-green-50 border border-green-100 rounded p-2 flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                    <span className="text-xs font-bold text-green-800">Top Tier! Max Odds Achieved.</span>
+                                </div>
+                            ) : null}
+                        </div>
+                        
+                        <div className="mt-2 text-[9px] text-gray-400 leading-tight text-center">
+                            *Projections via DHS Docket No. USCIS-2025-0040.
                         </div>
                     </div>
                 </Popup>
@@ -364,12 +287,14 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   );
 }
 
-function WageRow({ level, amount, userSalary, odds, prob, impact }: any) {
-    const isCovered = userSalary >= amount;
-    const rowClass = isCovered ? "opacity-100" : "opacity-40 grayscale";
+// Updated WageRow with Strict Highlighting
+function WageRow({ level, amount, userLevel, odds, prob, impact }: any) {
+    const isMatch = userLevel === level;
+    // Lower opacity for non-matching rows to make the active one pop
+    const rowClass = isMatch ? "opacity-100 bg-gray-50 rounded shadow-sm scale-[1.02] border border-gray-200" : "opacity-40 grayscale blur-[0.2px]";
     
     let badgeStyle = "bg-gray-100 text-gray-500 border-gray-200";
-    if (isCovered) {
+    if (isMatch) {
         if (level === 4) badgeStyle = "bg-green-100 text-green-800 border-green-200";
         else if (level === 3) badgeStyle = "bg-blue-50 text-blue-700 border-blue-200";
         else if (level === 2) badgeStyle = "bg-yellow-50 text-yellow-700 border-yellow-200";
@@ -377,7 +302,7 @@ function WageRow({ level, amount, userSalary, odds, prob, impact }: any) {
     }
 
     return (
-        <div className={`flex justify-between items-center ${rowClass} transition-all duration-200 py-1`}>
+        <div className={`flex justify-between items-center ${rowClass} transition-all duration-300 py-1.5 px-2`}>
             <div className="flex flex-col w-20">
                 <span className="font-bold text-gray-800 text-xs">Level {level}</span>
                 <span className="text-[10px] text-gray-500">${amount?.toLocaleString()}</span>
@@ -387,9 +312,8 @@ function WageRow({ level, amount, userSalary, odds, prob, impact }: any) {
                 {odds}
             </div>
 
-            <div className={`w-24 px-2 py-1 rounded border text-right flex flex-col ${badgeStyle}`}>
-                <span className="font-bold text-xs">{prob} Chance</span>
-                <span className="text-[9px] uppercase tracking-wide font-bold opacity-90">{impact}</span>
+            <div className={`w-20 py-0.5 rounded border text-center ${badgeStyle}`}>
+                <span className="font-bold text-[10px] block">{prob}</span>
             </div>
         </div>
     );
