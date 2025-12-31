@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Search, ChevronRight, Info, AlertTriangle, Bot, FileText, CheckCircle2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Sparkles, Search, ChevronRight, Info, AlertTriangle, Bot, FileText, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
 export default function FindSocPage() {
@@ -74,20 +74,20 @@ export default function FindSocPage() {
             </p>
         </div>
 
-        {/* --- NEW ADDITION: API LIMIT DISCLAIMER --- */}
+        {/* --- UPDATE 1: API LIMIT NOTICE --- */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-900">
                 <p className="font-bold mb-1">Trial API Limit Notice</p>
                 <p className="leading-relaxed text-amber-800/90">
                     This tool runs on a trial API with strict daily limits. If results fail to load, the limit has likely been reached. 
-                    Please try <a href="https://chatgpt.com" target="_blank" className="underline font-semibold hover:text-amber-950">ChatGPT</a> or 
-                    <a href="https://gemini.google.com" target="_blank" className="underline font-semibold hover:text-amber-950 ml-1">Gemini</a> directly 
-                    to get an idea about your SOC code.
+                    Please try <a href="https://chatgpt.com" target="_blank" className="underline font-semibold hover:text-amber-950">ChatGPT</a>, 
+                    <a href="https://gemini.google.com" target="_blank" className="underline font-semibold hover:text-amber-950 ml-1">Gemini</a>, 
+                    or consult your <strong>HR Partner / Immigration Lawyer</strong> to confirm your official code.
                 </p>
             </div>
         </div>
-        {/* ------------------------------------------ */}
+        {/* ---------------------------------- */}
 
         {/* 3. INPUT CARD */}
         <div className="bg-white p-1 rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -182,7 +182,7 @@ Example: 'I develop web applications using React and Node.js. I deploy to AWS, m
             </div>
         )}
 
-        {/* 5. DISCLAIMER FOOTER (Styled like Home Page "Compliance Facts") */}
+        {/* --- UPDATE 2: TRANSPARENT AI DISCLOSURE --- */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mt-8">
             <div className="bg-orange-50 px-5 py-3 border-b border-orange-100 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-orange-600" />
@@ -190,7 +190,7 @@ Example: 'I develop web applications using React and Node.js. I deploy to AWS, m
             </div>
             <div className="p-5 text-sm text-gray-600 space-y-3">
                  <p className="leading-relaxed">
-                    This tool uses <strong>semantic analysis</strong> to compare your input against the 2018 O*NET-SOC Taxonomy. It is designed to assist in finding the closest standard classification.
+                    This tool uses <strong>RAG (Retrieval-Augmented Generation)</strong> technology. It first scans the official Department of Labor dictionary to retrieve relevant job codes, then uses Llama 3 AI to semantically match your input to the best candidate.
                 </p>
                 <div className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-100">
                     <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -200,6 +200,7 @@ Example: 'I develop web applications using React and Node.js. I deploy to AWS, m
                 </div>
             </div>
         </div>
+        {/* ------------------------------------------- */}
 
       </div>
     </main>
