@@ -288,20 +288,32 @@ function WageMapContent() {
                         Data Source: DOL FLC Data Center (July 2025) & DHS Docket No. USCIS-2025-0040.
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                        Not legal advice. For informational purposes only. Please check the OFLC Wage Seach tool for confirming the data.
+                        Not legal advice. For informational purposes only. Please check the OFLC Wage Search tool for confirming the data.
                     </p>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    <span className="text-sm font-bold text-gray-700">Developed by Akshay Jain</span>
-                    <a href="https://www.linkedin.com/in/akshayjain128/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#0077b5] transition-colors">
-                        <Linkedin className="w-5 h-5" />
-                        <span className="sr-only">LinkedIn</span>
+                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
+                    {/* ATTRIBUTION LINK */}
+                    <a 
+                        href="https://wagemap.vercel.app/" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        Inspired by WageMap
                     </a>
-                    <a href="https://github.com/idealidler" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black transition-colors">
-                        <Github className="w-5 h-5" />
-                        <span className="sr-only">GitHub</span>
-                    </a>
+
+                    <div className="flex items-center gap-6">
+                        <span className="text-sm font-bold text-gray-700">Developed by Akshay Jain</span>
+                        <a href="https://www.linkedin.com/in/akshayjain128/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#0077b5] transition-colors">
+                            <Linkedin className="w-5 h-5" />
+                            <span className="sr-only">LinkedIn</span>
+                        </a>
+                        <a href="https://github.com/idealidler" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black transition-colors">
+                            <Github className="w-5 h-5" />
+                            <span className="sr-only">GitHub</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </footer>
