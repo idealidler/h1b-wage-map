@@ -213,7 +213,7 @@ function WageMapContent() {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="font-bold text-blue-900 text-sm">Level 3 (Mid-Senior)</span>
-                                    <span className="bg-blue-200 text-blue-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Likely</span>
+                                    <span className="bg-blue-200 text-blue-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Good</span>
                                 </div>
                                 <p className="text-xs text-blue-800 mt-0.5">Strong advantage over random.</p>
                             </div>
@@ -228,7 +228,7 @@ function WageMapContent() {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="font-bold text-amber-900 text-sm">Level 2 (Associate)</span>
-                                    <span className="bg-amber-200 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Neutral</span>
+                                    <span className="bg-amber-200 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Fair</span>
                                 </div>
                                 <p className="text-xs text-amber-800 mt-0.5">Slight improvement over random.</p>
                             </div>
@@ -243,7 +243,7 @@ function WageMapContent() {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="font-bold text-red-900 text-sm">Level 1 (Entry)</span>
-                                    <span className="bg-red-200 text-red-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Hard</span>
+                                    <span className="bg-red-200 text-red-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Risky</span>
                                 </div>
                                 <p className="text-xs text-red-800 mt-0.5">Significantly harder odds.</p>
                             </div>

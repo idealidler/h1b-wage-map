@@ -150,7 +150,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                 <MapPin className="w-3 h-3 text-blue-600" />
                 <span>Locate County:</span>
             </div>
-            {/* ... SELECTORS (Unchanged) ... */}
+            
             <div className="relative group w-full md:w-48">
                 <select value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCountyFips(""); if(e.target.value) handleJumpToState(e.target.value); }}
                     className="appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 block w-full p-2.5 pr-8 cursor-pointer font-medium">
@@ -246,16 +246,16 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                         {/* WAGE ROWS - Only active level is highlighted */}
                         <div className="space-y-1">
                             <WageRow level={4} amount={activePopup.properties.l4} userLevel={activePopup.properties.userLevel} 
-                                odds="+107% Boost" prob="Safe" impact="Top Tier" />
+                                odds="+107% Boost" prob="~61%" impact="Safe" />
                             <WageRow level={3} amount={activePopup.properties.l3} userLevel={activePopup.properties.userLevel} 
-                                odds="+55% Boost" prob="Likely" impact="Good Odds" />
+                                odds="+55% Boost" prob="~46%" impact="Good" />
                             <WageRow level={2} amount={activePopup.properties.l2} userLevel={activePopup.properties.userLevel} 
                                 odds="+3% Boost" prob="~30%" impact="Fair" />
                             <WageRow level={1} amount={activePopup.properties.l1} userLevel={activePopup.properties.userLevel} 
-                                odds="-48% Drop" prob="Risky" impact="Very Low" />
+                                odds="-48% Drop" prob="~15%" impact="Risky" />
                         </div>
 
-                        {/* --- NEW SMART ACTION TOOLTIP --- */}
+                        {/* --- SMART ACTION TOOLTIP --- */}
                         <div className="mt-3 pt-3 border-t border-gray-100">
                             {gapInfo ? (
                                 <div className="bg-blue-50 border border-blue-100 rounded p-2 flex items-start gap-2">
@@ -287,7 +287,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   );
 }
 
-// Updated WageRow with Strict Highlighting
+// Updated WageRow with Stacked Badges
 function WageRow({ level, amount, userLevel, odds, prob, impact }: any) {
     const isMatch = userLevel === level;
     // Lower opacity for non-matching rows to make the active one pop
@@ -312,8 +312,9 @@ function WageRow({ level, amount, userLevel, odds, prob, impact }: any) {
                 {odds}
             </div>
 
-            <div className={`w-20 py-0.5 rounded border text-center ${badgeStyle}`}>
-                <span className="font-bold text-[10px] block">{prob}</span>
+            <div className={`w-20 py-0.5 rounded border text-center flex flex-col justify-center ${badgeStyle}`}>
+                <span className="font-bold text-[10px] leading-none mb-0.5">{prob}</span>
+                <span className="text-[8px] uppercase font-bold opacity-80 leading-none">{impact}</span>
             </div>
         </div>
     );
