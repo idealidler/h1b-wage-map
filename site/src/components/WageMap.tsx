@@ -116,7 +116,6 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
           try {
              const [minLng, minLat, maxLng, maxLat] = bbox(feature);
              
-             // UX FIX: Top padding 320 ensures tooltip has space above the county
              mapRef.current.fitBounds(
                  [[minLng, minLat], [maxLng, maxLat]],
                  { 
@@ -277,15 +276,11 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             mapStyle="mapbox://styles/mapbox/light-v11"
             mapboxAccessToken={TOKEN}
             interactiveLayerIds={['county-fill']}
-            // --- NEW: CLOSE TOOLTIP ON USER INTERACTION ---
             onMove={(evt) => {
-                // evt.originalEvent is undefined if the move was programmatic (auto-zoom)
-                // evt.originalEvent is DEFINED if the move was by mouse/touch/scroll (user)
                 if (evt.originalEvent && selectedInfo) {
                     setSelectedInfo(null);
                 }
             }}
-            // ----------------------------------------------
             onMouseMove={(event) => {
                 if (selectedInfo) return; 
                 const { features, lngLat } = event;
@@ -348,13 +343,13 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                         
                         <div className="space-y-2">
                             <WageRow level={4} amount={activePopup.properties.l4} userSalary={userSalary} 
-                                odds="4 Entries" prob="~61%" impact="Excellent" />
+                                odds="+107% Boost" prob="~61%" impact="Excellent" />
                             <WageRow level={3} amount={activePopup.properties.l3} userSalary={userSalary} 
-                                odds="3 Entries" prob="~46%" impact="Good Odds" />
+                                odds="+55% Boost" prob="~46%" impact="Good Odds" />
                             <WageRow level={2} amount={activePopup.properties.l2} userSalary={userSalary} 
-                                odds="2 Entries" prob="~30%" impact="Fair" />
+                                odds="+3% Boost" prob="~30%" impact="Fair" />
                             <WageRow level={1} amount={activePopup.properties.l1} userSalary={userSalary} 
-                                odds="1 Entry" prob="~15%" impact="Very Low" />
+                                odds="-48% Drop" prob="~15%" impact="Very Low" />
                         </div>
 
                         <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] text-gray-400 leading-tight">

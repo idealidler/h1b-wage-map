@@ -3,7 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import JobSearch from "@/components/JobSearch";
 import WageMap from "@/components/WageMap";
-import { Info, TrendingUp, AlertTriangle, Calendar, Linkedin, Github, DollarSign, Sparkles, MapPin, X, CheckCircle2, BookOpen, TrendingDown, ShieldAlert } from "lucide-react";
+import { Info, TrendingUp, AlertTriangle, Calendar, Linkedin, Github, DollarSign, Sparkles, MapPin, X, CheckCircle2, BookOpen, TrendingDown, ShieldAlert, Users, FileWarning } from "lucide-react";
 
 // --- COMPLIANCE MODAL ---
 function ComplianceModal({ onClose }: { onClose: () => void }) {
@@ -187,32 +187,69 @@ function WageMapContent() {
                         <h3 className="font-bold text-gray-900">Impact on Lottery Odds</h3>
                     </div>
                     
-                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {/* Good News */}
-                        <div className="flex flex-col gap-2">
-                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">The Winners</div>
-                            <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="font-bold text-green-800 text-lg">Level 4 (Senior)</span>
-                                    <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full font-bold">+107%</span>
+                    <div className="p-6 flex flex-col gap-4">
+                        <div className="flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2">
+                            <span>Wage Level</span>
+                            <span>Projected Change vs Random</span>
+                        </div>
+
+                        {/* LEVEL 4 */}
+                        <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg border border-green-100">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-green-900 text-sm">Level 4 (Senior)</span>
+                                    <span className="bg-green-200 text-green-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Safe</span>
                                 </div>
-                                <p className="text-sm text-green-900">
-                                    Senior roles see a massive boost. Selection probability effectively doubles compared to the old random lottery.
-                                </p>
+                                <p className="text-xs text-green-800 mt-0.5">Highest priority selection.</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="block font-bold text-green-700 text-lg">+107%</span>
+                                <span className="text-[10px] text-green-600 font-medium">Boost</span>
                             </div>
                         </div>
 
-                        {/* Bad News */}
-                        <div className="flex flex-col gap-2">
-                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">The Risk</div>
-                            <div className="bg-red-50 rounded-lg p-4 border border-red-100">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="font-bold text-red-800 text-lg">Level 1 (Entry)</span>
-                                    <span className="bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full font-bold md:whitespace-nowrap">-48% Odds</span>
+                        {/* LEVEL 3 */}
+                        <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-blue-900 text-sm">Level 3 (Mid-Senior)</span>
+                                    <span className="bg-blue-200 text-blue-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Likely</span>
                                 </div>
-                                <p className="text-sm text-red-900">
-                                    Entry-level roles face significantly harder odds. Consider moving to a Level 2 wage if compliant.
-                                </p>
+                                <p className="text-xs text-blue-800 mt-0.5">Strong advantage over random.</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="block font-bold text-blue-700 text-lg">+55%</span>
+                                <span className="text-[10px] text-blue-600 font-medium">Boost</span>
+                            </div>
+                        </div>
+
+                        {/* LEVEL 2 */}
+                        <div className="flex items-center justify-between bg-amber-50 p-3 rounded-lg border border-amber-100">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-amber-900 text-sm">Level 2 (Associate)</span>
+                                    <span className="bg-amber-200 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Neutral</span>
+                                </div>
+                                <p className="text-xs text-amber-800 mt-0.5">Slight improvement over random.</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="block font-bold text-amber-700 text-lg">+3%</span>
+                                <span className="text-[10px] text-amber-600 font-medium">Boost</span>
+                            </div>
+                        </div>
+
+                        {/* LEVEL 1 */}
+                        <div className="flex items-center justify-between bg-red-50 p-3 rounded-lg border border-red-100 opacity-90">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-red-900 text-sm">Level 1 (Entry)</span>
+                                    <span className="bg-red-200 text-red-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Hard</span>
+                                </div>
+                                <p className="text-xs text-red-800 mt-0.5">Significantly harder odds.</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="block font-bold text-red-700 text-lg">-48%</span>
+                                <span className="text-[10px] text-red-600 font-medium">Drop</span>
                             </div>
                         </div>
                     </div>
@@ -227,30 +264,73 @@ function WageMapContent() {
                         <ShieldAlert className="w-5 h-5 text-orange-600" />
                         <h3 className="font-bold text-gray-900">Critical Alerts</h3>
                     </div>
-                    <div className="p-5 flex-grow space-y-4">
+                    <div className="p-5 flex-grow space-y-4 text-sm">
+                        
+                        {/* ITEM 1: BASE SALARY */}
                         <div className="flex gap-3">
                             <div className="bg-purple-100 p-2 rounded-lg h-fit">
                                 <DollarSign className="w-5 h-5 text-purple-700" />
                             </div>
                             <div>
-                                <h4 className="font-bold text-gray-900 text-sm">Base Salary ONLY</h4>
+                                <h4 className="font-bold text-gray-900">Base Salary ONLY</h4>
                                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                                    <strong>Do NOT include Stocks (RSUs)</strong> or Sign-on Bonuses. Only guaranteed base pay counts toward the wage level.
+                                    <strong>Do NOT include Stocks (RSUs)</strong> or Sign-on Bonuses. Only guaranteed base pay counts.
                                 </p>
                             </div>
                         </div>
 
+                        {/* ITEM 2: MULTIPLE SPONSORS (New & Critical) */}
+                        <div className="flex gap-3">
+                            <div className="bg-red-100 p-2 rounded-lg h-fit">
+                                <Users className="w-5 h-5 text-red-700" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-gray-900">Multiple Sponsors Risk</h4>
+                                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                                    If 2+ companies apply for you, USCIS assigns you the <strong>lowest</strong> wage level among all offers. One low offer poisons your odds.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* ITEM 3: SALARY RANGES (New) */}
+                        <div className="flex gap-3">
+                            <div className="bg-amber-100 p-2 rounded-lg h-fit">
+                                <FileWarning className="w-5 h-5 text-amber-700" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-gray-900">Salary Ranges</h4>
+                                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                                    If your offer states a range (e.g. $100k-$120k), the <strong>minimum ($100k)</strong> is used for lottery weighting.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* ITEM 4: REMOTE WORK */}
                         <div className="flex gap-3">
                             <div className="bg-blue-100 p-2 rounded-lg h-fit">
                                 <MapPin className="w-5 h-5 text-blue-700" />
                             </div>
                             <div>
-                                <h4 className="font-bold text-gray-900 text-sm">Remote = Home Address</h4>
+                                <h4 className="font-bold text-gray-900">Remote = Home</h4>
                                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                                    If you work from home, your lottery odds are tied to your home zip code, not the HQ.
+                                    Working remotely? Your lottery odds are tied to your <strong>home zip code</strong> wage data, not the HQ.
                                 </p>
                             </div>
                         </div>
+
+                        {/* ITEM 5: MASTER'S DEGREE REALITY CHECK */}
+                        <div className="flex gap-3">
+                            <div className="bg-pink-100 p-2 rounded-lg h-fit">
+                                <BookOpen className="w-5 h-5 text-pink-700" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-gray-900">Wage {'>'} Degree</h4>
+                                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                                    The Master's Cap is now weighted too. A <strong>Level 1 Master's</strong> candidate has much lower odds than a <strong>Level 3 Bachelor's</strong> candidate. Your degree is no longer a safety shield.
+                                </p>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
