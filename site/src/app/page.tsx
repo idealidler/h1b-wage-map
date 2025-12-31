@@ -178,10 +178,10 @@ function WageMapContent() {
             <WageMap socCode={selectedSoc} jobTitle={jobTitle} userSalary={salary === "" ? 0 : salary} />
             
             {/* NEW: BENTO GRID LAYOUT FOR FACTS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 
                 {/* 1. SELECTION ODDS (Takes up 2/3 space) */}
-                <div className="md:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                     <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-blue-700" />
                         <h3 className="font-bold text-gray-900">Impact on Lottery Odds</h3>
