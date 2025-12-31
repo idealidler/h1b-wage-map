@@ -330,6 +330,19 @@ function WageMapContent() {
                                 </p>
                             </div>
                         </div>
+                        
+                        {/* ITEM 6: BELOW LEVEL 1 RULE */}
+                        <div className="flex gap-3">
+                            <div className="bg-slate-100 p-2 rounded-lg h-fit">
+                                <TrendingDown className="w-5 h-5 text-slate-700" />
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-gray-900">Below Level 1 = Ineligible</h4>
+                                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                                    If your salary falls below the Level 1 wage, you are <strong>not eligible</strong> for the H-1B lottery. There is no "Level 0" entry. You must strictly meet at least the Level 1 prevailing wage to register.
+                                </p>
+                            </div>
+                        </div>
 
                     </div>
                 </div>
