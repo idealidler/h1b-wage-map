@@ -103,7 +103,7 @@ Example: 'I develop web applications using React and Node.js. I deploy to AWS, m
                 {/* Character Count / Model Badge */}
                 <div className="absolute bottom-4 right-6 flex items-center gap-2">
                      <span className="text-xs font-medium text-gray-300 uppercase tracking-wider flex items-center gap-1">
-                        <Bot className="w-3 h-3" /> Gemini 2.5 Flash
+                        <Bot className="w-3 h-3" /> Llama 3
                      </span>
                 </div>
             </div>

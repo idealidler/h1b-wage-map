@@ -29,7 +29,7 @@ This tool visualizes official DOL FLC wage data on an interactive US map. It all
 ## ✨ Features
 * **Real-time Geospatial Rendering:** Built with `react-map-gl` (Mapbox) to render 3,200+ county shapes with high performance.
 * **Client-Side Data Merging:** innovative "Pre-Paint" logic to merge massive JSON wage datasets with GeoJSON boundaries instantly on the client.
-* **AI-Powered Classification:** Uses Google's **Gemini 2.5 Flash** to analyze user resumes and map them to O*NET SOC Codes.
+* **AI-Powered Classification:** Uses Google's **Llama 3** to analyze user resumes and map them to O*NET SOC Codes.
 * **Compliance Logic:** Built-in alerts for the "Lowest Wage Rule" regarding hybrid/remote work.
 
 ## 🛠️ Tech Stack
