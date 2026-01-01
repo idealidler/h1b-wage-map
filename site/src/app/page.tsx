@@ -3,7 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import JobSearch from "@/components/JobSearch";
 import WageMap from "@/components/WageMap";
-import { Info, TrendingUp, AlertTriangle, Calendar, Linkedin, Github, DollarSign, Sparkles, MapPin, X, CheckCircle2, BookOpen, TrendingDown, ShieldAlert, Users, FileWarning } from "lucide-react";
+import { Info, TrendingUp, AlertTriangle, Calendar, Linkedin, Github, DollarSign, Sparkles, MapPin, X, CheckCircle2, BookOpen, TrendingDown, ShieldAlert, Users, FileWarning, ExternalLink, Ticket, Table } from "lucide-react";
 
 // --- COMPLIANCE MODAL ---
 function ComplianceModal({ onClose }: { onClose: () => void }) {
@@ -150,7 +150,6 @@ function WageMapContent() {
                     </div>
                     
                     <JobSearch 
-                       
                         initialValue={jobTitle} 
                         onSelect={(soc, title) => {
                             setSelectedSoc(soc);
@@ -180,81 +179,132 @@ function WageMapContent() {
             {/* NEW: BENTO GRID LAYOUT FOR FACTS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 
-                {/* 1. SELECTION ODDS (Takes up 2/3 space) */}
+                {/* 1. SELECTION ODDS (Detailed with Links) */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                     <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-blue-700" />
-                        <h3 className="font-bold text-gray-900">Impact on Lottery Odds</h3>
+                        <h3 className="font-bold text-gray-900">Lottery Probabilities (FY2027)</h3>
                     </div>
                     
-                    <div className="p-6 flex flex-col gap-4">
-                        <div className="flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2">
-                            <span>Wage Level</span>
-                            <span>Projected Change vs Random</span>
+                    <div className="p-0 flex flex-col flex-grow">
+                        {/* Header Grid */}
+                        <div className="grid grid-cols-12 px-5 py-3 bg-gray-50/50 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                            <div className="col-span-4">Wage Level</div>
+                            <div className="col-span-4 text-center">Entries ("Tickets")</div>
+                            <div className="col-span-4 text-right">Selection Chance</div>
                         </div>
 
                         {/* LEVEL 4 */}
-                        <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg border border-green-100">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-green-900 text-sm">Level 4 (Senior)</span>
-                                    <span className="bg-green-200 text-green-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Safe</span>
-                                </div>
-                                <p className="text-xs text-green-800 mt-0.5">Highest priority selection.</p>
+                        <div className="grid grid-cols-12 px-5 py-5 border-b border-gray-50 hover:bg-green-50/50 transition-colors items-center group">
+                            <div className="col-span-4">
+                                <span className="block font-bold text-gray-900 text-base group-hover:text-green-800">Level 4</span>
+                                <span className="text-xs text-gray-500">Senior / Expert</span>
                             </div>
-                            <div className="text-right">
-                                <span className="block font-bold text-green-700 text-lg">+107%</span>
-                                <span className="text-[10px] text-green-600 font-medium">Boost</span>
+                            <div className="col-span-4 text-center">
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-100 text-green-700 border border-green-200">
+                                    <Ticket className="w-4 h-4" />
+                                    <span className="font-bold text-base">4x</span>
+                                </div>
+                            </div>
+                            <div className="col-span-4 text-right">
+                                <span className="block font-bold text-green-700 text-xl">~61%</span>
+                                <span className="text-sm text-green-600 font-medium">+107% Boost</span>
                             </div>
                         </div>
 
                         {/* LEVEL 3 */}
-                        <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-blue-900 text-sm">Level 3 (Mid-Senior)</span>
-                                    <span className="bg-blue-200 text-blue-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Good</span>
-                                </div>
-                                <p className="text-xs text-blue-800 mt-0.5">Strong advantage over random.</p>
+                        <div className="grid grid-cols-12 px-5 py-5 border-b border-gray-50 hover:bg-blue-50/50 transition-colors items-center group">
+                            <div className="col-span-4">
+                                <span className="block font-bold text-gray-900 text-base group-hover:text-blue-800">Level 3</span>
+                                <span className="text-xs text-gray-500">Mid-Senior</span>
                             </div>
-                            <div className="text-right">
-                                <span className="block font-bold text-blue-700 text-lg">+55%</span>
-                                <span className="text-[10px] text-blue-600 font-medium">Boost</span>
+                            <div className="col-span-4 text-center">
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                                    <Ticket className="w-4 h-4" />
+                                    <span className="font-bold text-base">3x</span>
+                                </div>
+                            </div>
+                            <div className="col-span-4 text-right">
+                                <span className="block font-bold text-blue-700 text-xl">~46%</span>
+                                <span className="text-sm text-blue-600 font-medium">+55% Boost</span>
                             </div>
                         </div>
 
                         {/* LEVEL 2 */}
-                        <div className="flex items-center justify-between bg-amber-50 p-3 rounded-lg border border-amber-100">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-amber-900 text-sm">Level 2 (Associate)</span>
-                                    <span className="bg-amber-200 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Fair</span>
-                                </div>
-                                <p className="text-xs text-amber-800 mt-0.5">Slight improvement over random.</p>
+                        <div className="grid grid-cols-12 px-5 py-5 border-b border-gray-50 hover:bg-amber-50/50 transition-colors items-center group">
+                            <div className="col-span-4">
+                                <span className="block font-bold text-gray-900 text-base group-hover:text-amber-800">Level 2</span>
+                                <span className="text-xs text-gray-500">Associate</span>
                             </div>
-                            <div className="text-right">
-                                <span className="block font-bold text-amber-700 text-lg">+3%</span>
-                                <span className="text-[10px] text-amber-600 font-medium">Boost</span>
+                            <div className="col-span-4 text-center">
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                                    <Ticket className="w-4 h-4" />
+                                    <span className="font-bold text-base">2x</span>
+                                </div>
+                            </div>
+                            <div className="col-span-4 text-right">
+                                <span className="block font-bold text-amber-700 text-xl">~30%</span>
+                                <span className="text-sm text-amber-600 font-medium">+3% Boost</span>
                             </div>
                         </div>
 
-                        {/* LEVEL 1 */}
-                        <div className="flex items-center justify-between bg-red-50 p-3 rounded-lg border border-red-100 opacity-90">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-red-900 text-sm">Level 1 (Entry)</span>
-                                    <span className="bg-red-200 text-red-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Risky</span>
-                                </div>
-                                <p className="text-xs text-red-800 mt-0.5">Significantly harder odds.</p>
+                         {/* LEVEL 1 */}
+                         <div className="grid grid-cols-12 px-5 py-5 hover:bg-red-50/50 transition-colors items-center group">
+                            <div className="col-span-4">
+                                <span className="block font-bold text-gray-900 text-base group-hover:text-red-800">Level 1</span>
+                                <span className="text-xs text-gray-500">Entry Level</span>
                             </div>
-                            <div className="text-right">
-                                <span className="block font-bold text-red-700 text-lg">-48%</span>
-                                <span className="text-[10px] text-red-600 font-medium">Drop</span>
+                            <div className="col-span-4 text-center">
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-50 text-red-700 border border-red-200">
+                                    <Ticket className="w-4 h-4" />
+                                    <span className="font-bold text-base">1x</span>
+                                </div>
+                            </div>
+                            <div className="col-span-4 text-right">
+                                <span className="block font-bold text-red-700 text-xl">~15%</span>
+                                <span className="text-sm text-red-600 font-medium">-48% Drop</span>
                             </div>
                         </div>
                     </div>
-                    <div className="px-6 pb-4 text-xs text-gray-400">
-                        * Based on statistical projections in DHS Docket No. USCIS-2025-0040.
+
+                    {/* SOURCE LINK FOOTER */}
+                    <div className="bg-gray-50 p-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* LINK 1: DOCUMENT */}
+                         <a 
+                            href="https://www.federalregister.gov/documents/2025/12/29/2025-23853/weighted-selection-process-for-registrants-and-petitioners-seeking-to-file-cap-subject-h-1b"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-blue-300 hover:shadow-md transition-all group"
+                        >
+                            <div className="flex flex-col">
+                                <span className="text-xs font-bold text-gray-900 group-hover:text-blue-700 flex items-center gap-1.5">
+                                    <FileWarning className="w-3.5 h-3.5" />
+                                    Read Final Rule
+                                </span>
+                                <span className="text-[10px] text-gray-500 mt-0.5">
+                                    Docket No. USCIS-2025-0040
+                                </span>
+                            </div>
+                        </a>
+
+                        {/* LINK 2: IMAGE */}
+                        <a 
+                            href="https://img.federalregister.gov/ER29DE25.021/ER29DE25.021_original_size.png"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-blue-300 hover:shadow-md transition-all group"
+                        >
+                            <div className="flex flex-col">
+                                <span className="text-xs font-bold text-gray-900 group-hover:text-blue-700 flex items-center gap-1.5">
+                                    <Table className="w-3.5 h-3.5" />
+                                    View Official Table
+                                </span>
+                                <span className="text-[10px] text-gray-500 mt-0.5">
+                                    Source: Federal Register (Table 5)
+                                </span>
+                            </div>
+                             <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600" />
+                        </a>
                     </div>
                 </div>
 
@@ -318,15 +368,15 @@ function WageMapContent() {
                             </div>
                         </div>
 
-                        {/* ITEM 5: MASTER'S DEGREE REALITY CHECK */}
+                        {/* ITEM 5: MASTER'S DEGREE REALITY CHECK (UPDATED & SIMPLIFIED) */}
                         <div className="flex gap-3">
                             <div className="bg-pink-100 p-2 rounded-lg h-fit">
                                 <BookOpen className="w-5 h-5 text-pink-700" />
                             </div>
                             <div>
-                                <h4 className="font-bold text-gray-900">Wage {'>'} Degree</h4>
+                                <h4 className="font-bold text-gray-900">Master's Cap ≠ Safety Net</h4>
                                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                                    The Master's Cap is now weighted too. A <strong>Level 1 Master's</strong> candidate has much lower odds than a <strong>Level 3 Bachelor's</strong> candidate. Your degree is no longer a safety shield.
+                                    The 20,000 Master's quota still exists, giving you a second lottery entry. However, this second drawing is now <strong>weighted by wage</strong>. A low-salary Master's degree effectively loses to a high-salary Bachelor's degree.
                                 </p>
                             </div>
                         </div>
