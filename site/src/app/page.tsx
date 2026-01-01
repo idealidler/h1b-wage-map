@@ -285,6 +285,7 @@ function WageMapContent() {
                                     Docket No. USCIS-2025-0040
                                 </span>
                             </div>
+                             <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600" />
                         </a>
 
                         {/* LINK 2: IMAGE */}
@@ -297,7 +298,7 @@ function WageMapContent() {
                             <div className="flex flex-col">
                                 <span className="text-xs font-bold text-gray-900 group-hover:text-blue-700 flex items-center gap-1.5">
                                     <Table className="w-3.5 h-3.5" />
-                                    View Official Table
+                                    View Official Probabilities Table
                                 </span>
                                 <span className="text-[10px] text-gray-500 mt-0.5">
                                     Source: Federal Register (Table 5)

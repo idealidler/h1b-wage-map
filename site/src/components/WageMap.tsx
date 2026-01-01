@@ -261,9 +261,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                                 <div className="bg-blue-50 border border-blue-100 rounded p-2 flex items-start gap-2">
                                     <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                                     <div>
-                                        <div className="text-[10px] uppercase font-bold text-blue-500 tracking-wider">Negotiation Tip</div>
                                         <div className="text-xs font-semibold text-blue-900 leading-tight">
-                                            Raise offer by <span className="text-blue-700 bg-blue-100 px-1 rounded">${gapInfo.diff.toLocaleString()}</span> to reach {gapInfo.next}!
+                                            Raise wage by <span className="text-blue-700 bg-blue-100 px-1 rounded">${gapInfo.diff.toLocaleString()}</span> to reach {gapInfo.next}!
                                         </div>
                                     </div>
                                 </div>

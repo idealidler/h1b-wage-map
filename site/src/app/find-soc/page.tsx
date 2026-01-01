@@ -75,7 +75,7 @@ export default function FindSocPage() {
         </div>
 
         {/* --- UPDATE 1: API LIMIT NOTICE --- */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+        {/* <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-900">
                 <p className="font-bold mb-1">Trial API Limit Notice</p>
@@ -86,7 +86,7 @@ export default function FindSocPage() {
                     or consult your <strong>HR Partner / Immigration Lawyer</strong> to confirm your official code.
                 </p>
             </div>
-        </div>
+        </div> */}
         {/* ---------------------------------- */}
 
         {/* 3. INPUT CARD */}
@@ -190,7 +190,7 @@ Example: 'I develop web applications using React and Node.js. I deploy to AWS, m
             </div>
             <div className="p-5 text-sm text-gray-600 space-y-3">
                  <p className="leading-relaxed">
-                    This tool uses <strong>RAG (Retrieval-Augmented Generation)</strong> technology. It first scans the official Department of Labor dictionary to retrieve relevant job codes, then uses Llama 3 AI to semantically match your input to the best candidate.
+                    This tool uses <strong>RAG (Retrieval-Augmented Generation)</strong>. It first scans the official Department of Labor dictionary to retrieve relevant job description, then uses Llama 3 LLM to semantically match your input to the closest job description to provide a SOC code.
                 </p>
                 <div className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-100">
                     <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
