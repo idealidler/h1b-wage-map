@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import JobSearch from "@/components/JobSearch";
 import WageMap from "@/components/WageMap";
+import PromoBanner from "@/components/PromoBanner"; // <--- 1. NEW IMPORT
 import { Info, TrendingUp, AlertTriangle, Calendar, Linkedin, Github, DollarSign, Sparkles, MapPin, X, CheckCircle2, BookOpen, TrendingDown, ShieldAlert, Users, FileWarning, ExternalLink, Ticket, Table } from "lucide-react";
 
 // --- COMPLIANCE MODAL ---
@@ -109,9 +110,13 @@ function WageMapContent() {
     return (
       <main className="min-h-screen bg-white flex flex-col relative font-sans text-gray-900">
         
+        {/* 2. PROMO BANNER (Fixed at top) */}
+        <PromoBanner />
+
         {showModal && <ComplianceModal onClose={handleCloseModal} />}
 
-        <div className="max-w-7xl mx-auto p-4 md:p-8 flex flex-col gap-8 flex-grow">
+        {/* 3. Added 'mt-8' here to push content down so Banner doesn't overlap Title */}
+        <div className="max-w-7xl mx-auto p-4 md:p-8 flex flex-col gap-8 flex-grow mt-8">
             
             {/* HEADER */}
             <div className="text-center space-y-5 max-w-3xl mx-auto">
@@ -301,7 +306,7 @@ function WageMapContent() {
                                     View Official Probabilities Table
                                 </span>
                                 <span className="text-[10px] text-gray-500 mt-0.5">
-                                    Source: Federal Register (Table 5)
+                                    Source: Federal Register (Table 13)
                                 </span>
                             </div>
                              <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600" />
