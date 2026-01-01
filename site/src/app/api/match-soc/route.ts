@@ -4,60 +4,62 @@ import fs from "fs";
 import path from "path";
 import Papa from "papaparse";
 
-// Initialize Groq
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// CACHE: Load the CSV once when the server starts so we don't read it every request
 let cachedSocData: any[] = [];
 
 const loadSocData = () => {
   if (cachedSocData.length > 0) return cachedSocData;
 
   try {
-    // ADJUST THIS PATH to where your CSV actually lives
-    // Recommended: Move your csv to "public/data/oes_soc_occs.csv"
-    const filePath = path.join(process.cwd(), "data-pipeline", "oes_soc_occs.csv");
-    const fileContent = fs.readFileSync(filePath, "utf8");
+    // 1. FIX PATH: Points to 'site/data/oes_soc_occs.csv'
+    const filePath = path.join(process.cwd(), "data", "oes_soc_occs.csv");
+    
+    if (!fs.existsSync(filePath)) {
+        console.error("❌ CRITICAL: CSV File not found at:", filePath);
+        return [];
+    }
 
+    const fileContent = fs.readFileSync(filePath, "utf8");
     const parsed = Papa.parse(fileContent, {
       header: true,
       skipEmptyLines: true,
     });
 
-    // Normalize keys to lowercase for safety
+    // 2. FIX HEADERS: Matches your specific CSV format (soccode, Title, Description)
     cachedSocData = parsed.data.map((row: any) => ({
-      code: row["SOC Code"] || row["soc_code"] || "",
-      title: row["Title"] || row["job_title"] || "",
-      description: row["Description"] || row["job_description"] || "",
-    })).filter(item => item.code && item.description); // Remove bad rows
+      code: row["soccode"] || row["SOC Code"] || "",
+      title: row["Title"] || row["title"] || "",
+      description: row["Description"] || row["description"] || "",
+    })).filter(item => item.code && item.description); 
 
-    console.log(`✅ Loaded ${cachedSocData.length} SOC codes from file.`);
+    console.log(`✅ Successfully loaded ${cachedSocData.length} SOC codes.`);
   } catch (error) {
     console.error("⚠️ Failed to load CSV file:", error);
   }
   return cachedSocData;
 };
 
-// HELPER: Simple keyword search to find top candidates
 const findCandidates = (userText: string, allJobs: any[]) => {
   const userWords = userText.toLowerCase().split(/\W+/).filter(w => w.length > 3);
   
   const scored = allJobs.map(job => {
     let score = 0;
-    const jobContent = (job.title + " " + job.description).toLowerCase();
+    const titleLower = job.title.toLowerCase();
+    const descLower = job.description.toLowerCase();
     
-    // Simple point system: +1 for every matching word
     userWords.forEach(word => {
-      if (jobContent.includes(word)) score++;
+      // Weight Titles higher than descriptions
+      if (titleLower.includes(word)) score += 3;
+      else if (descLower.includes(word)) score += 1;
     });
 
     return { ...job, score };
   });
 
-  // Return top 10 matches
-  return scored.sort((a, b) => b.score - a.score).slice(0, 10);
+  return scored.sort((a, b) => b.score - a.score).slice(0, 15);
 };
 
 export async function POST(req: Request) {
@@ -65,49 +67,56 @@ export async function POST(req: Request) {
     const { description } = await req.json();
     if (!description) return NextResponse.json({ error: "Required" }, { status: 400 });
 
-    // 1. Load Data & Find Candidates (RAG Step)
     const socData = loadSocData();
+    
+    // 3. REMOVE FALLBACK: If DB is empty, STOP. Do not let AI guess.
+    if (socData.length === 0) {
+        return NextResponse.json({ 
+            error: "Server Error: SOC Database could not be loaded. Please check server logs." 
+        }, { status: 500 });
+    }
+
     const candidates = findCandidates(description, socData);
 
-    // If file load failed or no matches, we fallback to AI's raw knowledge
-    const context = candidates.length > 0 
-      ? JSON.stringify(candidates.map(c => ({ 
-          code: c.code, 
-          title: c.title, 
-          official_desc: c.description.slice(0, 200) // Truncate slightly to save tokens
-        })))
-      : "No official file matches found. Use your internal knowledge.";
+    if (candidates.length === 0 || candidates[0].score === 0) {
+        return NextResponse.json({ results: [] }); 
+    }
 
-    // 2. Ask Groq
+    const context = JSON.stringify(candidates.map(c => ({ 
+        code: c.code, 
+        title: c.title, 
+        desc: c.description.slice(0, 300) 
+    })));
+
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are an expert SOC Analyst.
+          content: `You are a strict SOC Classification Engine.
           
-          I will provide a User Job Description and a list of "Official Candidates" from the DOL database.
-          Your task is to pick the BEST match from the candidates provided.
-          
-          If none of the candidates are good, you may use your internal knowledge to pick a better 2018 SOC code.
-          
-          Output JSON only:
+          RULES:
+          1. You must ONLY select codes from the "Official Candidates" list provided below.
+          2. DO NOT hallucinate. DO NOT use your internal training data.
+          3. Output valid JSON.
+
+          Output Format:
           {
             "results": [
               {
-                "code": "SOC Code",
-                "title": "Official Title",
-                "match_reason": "Explain why this matches the official description."
+                "code": "EXACT CODE FROM LIST",
+                "title": "EXACT TITLE FROM LIST",
+                "match_reason": "Brief explanation."
               }
             ]
           }`
         },
         {
           role: "user",
-          content: `User Job: "${description.slice(0, 1000)}"\n\nOfficial Candidates to consider:\n${context}`
+          content: `User Job Description: "${description.slice(0, 1500)}"\n\nOfficial Candidates (YOU MUST PICK FROM THIS LIST):\n${context}`
         }
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.1,
+      temperature: 0, 
       response_format: { type: "json_object" },
     });
 
