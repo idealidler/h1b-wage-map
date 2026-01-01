@@ -1,13 +1,29 @@
-# Ignore Python Virtual Environment
+# --- NEXT.JS DEFAULTS (Keep these if you have them) ---
+node_modules/
+.next/
+out/
+.env*.local
+
+# --- PYTHON / PIPELINE ---
 .venv
 venv/
 env/
 __pycache__/
 *.pyc
 
-# Ignore Mac System Files
+# --- SYSTEM & IDE ---
 .DS_Store
-
-# Ignore IDES
 .vscode/
 .idea/
+
+# --- DATA PIPELINE (HEAVY FILES) ---
+# Ignore the folder where you keep the 2GB of Excel files
+data-pipeline/raw_data/
+
+# Ignore all Excel files everywhere (Safety net)
+*.xlsx
+
+
+# --- JSON RULES ---
+# Allow the map file we generate
+!site/public/company_soc_map.json
