@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Building2, Briefcase, ChevronRight, AlertCircle, CheckCircle2, Loader2, ArrowLeft, Network, TrendingUp, HelpCircle } from "lucide-react";
+import { Search, Building2, Briefcase, ChevronDown, CheckCircle2, Loader2, ArrowLeft, Network, TrendingUp, HelpCircle, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // --- TYPES ---
@@ -15,7 +15,6 @@ interface CompanyMap {
 export default function LcaSearch() {
   const router = useRouter();
   
-  // CACHE: We store loaded shards here so we don't re-fetch "GO" every time
   const [dataCache, setDataCache] = useState<CompanyMap>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,41 +23,35 @@ export default function LcaSearch() {
   const [selectedCompany, setSelectedCompany] = useState("");
   const [titleSearch, setTitleSearch] = useState("");
   
-  // Track which shard key we last fetched to avoid dupes
+  const [expandedJob, setExpandedJob] = useState<string | null>(null);
+
   const lastFetchedKey = useRef<string>("");
 
-  // --- DYNAMIC FETCHING LOGIC ---
+  // --- DYNAMIC FETCHING ---
   useEffect(() => {
-    // 1. We need at least 2 characters to know which file to load
     if (companySearch.length < 2) return;
 
-    // 2. Determine the Shard Key (e.g. "GO" for Google)
     let key = companySearch.slice(0, 2).toUpperCase();
-    
-    // Handle special chars/numbers (fallback to '00')
     if (!/^[A-Z]{2}$/.test(key)) {
         if (/^[A-Z]/.test(key)) { /* "A_" case */ }
         else { key = "00"; }
     }
 
-    // 3. If we already have this data, stop.
     if (dataCache[key] || lastFetchedKey.current === key) return;
 
     setLoading(true);
-    lastFetchedKey.current = key; // Mark as fetching
+    lastFetchedKey.current = key;
 
     fetch(`/db/${key}.json`)
       .then((res) => {
-        if (!res.ok) throw new Error("No data"); // File might not exist if no companies start with 'XZ'
+        if (!res.ok) throw new Error("No data");
         return res.json();
       })
       .then((json) => {
-        // Merge new data into our cache
         setDataCache(prev => ({ ...prev, ...json }));
         setLoading(false);
       })
       .catch(() => {
-        // Ignore 404s (just means no companies exist for that prefix)
         setLoading(false);
       });
 
@@ -66,11 +59,8 @@ export default function LcaSearch() {
 
   const formatSocDisplay = (code: string) => code.replace(".00", "");
 
-  // --- FILTERING (Runs against the loaded Cache) ---
   const filteredCompanies = useMemo(() => {
     if (!companySearch || companySearch.length < 2) return [];
-    
-    // Search through EVERYTHING we have loaded in memory
     return Object.keys(dataCache)
       .filter(c => c.includes(companySearch.toUpperCase()))
       .slice(0, 5);
@@ -86,7 +76,7 @@ export default function LcaSearch() {
       const totalA = companyData[a].reduce((sum, opt) => sum + opt.n, 0);
       const totalB = companyData[b].reduce((sum, opt) => sum + opt.n, 0);
       return totalB - totalA;
-    }).slice(0, 20); // Top 20
+    }).slice(0, 5); 
   }, [selectedCompany, dataCache, titleSearch]);
 
   const handleSelectResult = (socCode: string, socTitle: string) => {
@@ -98,6 +88,11 @@ export default function LcaSearch() {
     setSelectedCompany("");
     setCompanySearch("");
     setTitleSearch("");
+    setExpandedJob(null);
+  };
+
+  const toggleExpand = (title: string) => {
+    setExpandedJob(expandedJob === title ? null : title);
   };
 
   if (error) return <div className="text-red-500">{error}</div>;
@@ -113,7 +108,8 @@ export default function LcaSearch() {
                         <p className="font-bold">How to use Company Data:</p>
                         <ul className="list-disc pl-4 space-y-0.5 text-blue-800">
                             <li>Search for your employer (e.g. "Google").</li>
-                            <li>See the exact job titles they filed in LCA.</li>
+                            <li>Find your internal job title.</li>
+                            <li>See the exact SOC Code they filed.</li>
                         </ul>
                     </div>
                 </div>
@@ -129,14 +125,12 @@ export default function LcaSearch() {
                     />
                     <Search className="w-6 h-6 text-gray-400 absolute left-4 top-4" />
                     
-                    {/* LOADING INDICATOR */}
                     {loading && (
                         <div className="absolute right-4 top-4">
                             <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
                         </div>
                     )}
 
-                    {/* RESULTS */}
                     {companySearch.length >= 2 && filteredCompanies.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden divide-y divide-gray-100">
                             {filteredCompanies.map(comp => (
@@ -149,7 +143,8 @@ export default function LcaSearch() {
                                     className="w-full text-left px-5 py-4 hover:bg-purple-50 text-base font-bold text-gray-700 flex items-center justify-between group transition-colors"
                                 >
                                     {comp}
-                                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-purple-500" />
+                                    {/* Using a Chevron instead of Arrow to look more like a menu */}
+                                    <ChevronDown className="w-5 h-5 text-gray-300 group-hover:text-purple-500 -rotate-90" />
                                 </button>
                             ))}
                         </div>
@@ -158,7 +153,7 @@ export default function LcaSearch() {
             </div>
         ) : (
             <div className="space-y-6">
-                {/* COMPANY HEADER */}
+                {/* HEADER */}
                 <div className="sticky top-0 z-20 bg-white pb-4 border-b border-gray-100">
                     <button 
                         onClick={clearCompany}
@@ -184,7 +179,7 @@ export default function LcaSearch() {
                             type="text"
                             value={titleSearch}
                             onChange={(e) => setTitleSearch(e.target.value)}
-                            placeholder={`Search job titles at ${selectedCompany}...`}
+                            placeholder={`Enter your current job title...`}
                             autoFocus
                             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all font-medium text-gray-900 shadow-sm"
                         />
@@ -194,64 +189,106 @@ export default function LcaSearch() {
                     {!titleSearch && (
                         <div className="flex items-center gap-1.5 text-xs text-purple-600 font-medium px-1 mt-2 animate-in fade-in">
                             <TrendingUp className="w-3.5 h-3.5" />
-                            Showing top titles by volume
+                            Showing top 5 job titles
                         </div>
                     )}
                 </div>
 
-                {/* JOB TITLES LIST (Same as before) */}
+                {/* --- RESULTS LIST --- */}
                 <div className="space-y-3 pb-8">
                     {sortedTitles.map(title => {
                         const options = dataCache[selectedCompany][title];
+                        const totalFilings = options.reduce((sum, o) => sum + o.n, 0);
+                        const isExpanded = expandedJob === title;
+
                         return (
-                            <div key={title} className="w-full bg-white rounded-xl border border-gray-200 shadow-sm hover:border-purple-300 transition-all overflow-hidden group/card">
-                                <div className="bg-gray-50/50 px-5 py-3 border-b border-gray-100">
-                                    <h4 className="font-bold text-gray-900 text-sm md:text-base">{title}</h4>
-                                </div>
-                                <div className="divide-y divide-gray-100">
-                                    {options.map((opt, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleSelectResult(opt.s, opt.t)}
-                                            className="w-full flex flex-col p-4 hover:bg-purple-50 transition-colors text-left gap-3"
-                                        >
-                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                                <div className="space-y-1.5">
+                            <div key={title} className={`bg-white rounded-xl border transition-all overflow-hidden ${isExpanded ? "border-purple-300 shadow-md ring-1 ring-purple-100" : "border-gray-200 shadow-sm hover:border-purple-200"}`}>
+                                
+                                {/* 1. MAIN ROW (Job Title) */}
+                                <button 
+                                    onClick={() => toggleExpand(title)}
+                                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-lg ${isExpanded ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"}`}>
+                                            <Briefcase className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">
+                                                Company Job Title
+                                            </p>
+                                            <h4 className="font-bold text-gray-900 text-base">{title}</h4>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full border border-gray-200">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                                            <span className="text-xs font-bold text-gray-700">{totalFilings} filings</span>
+                                        </div>
+                                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} />
+                                    </div>
+                                </button>
+
+                                {/* 2. EXPANDED CONTENT (SOC Options) */}
+                                {isExpanded && (
+                                    <div className="border-t border-gray-100 bg-gray-50/30 p-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                        <p className="px-1 text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">
+                                            Select Official Category:
+                                        </p>
+                                        
+                                        {options.map((opt, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleSelectResult(opt.s, opt.t)}
+                                                className="w-full bg-white p-3 rounded-lg border border-gray-200 hover:border-purple-400 hover:shadow-sm transition-all text-left group flex flex-col gap-2"
+                                            >
+                                                <div className="flex justify-between items-start">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="bg-white border border-gray-200 text-gray-700 text-xs font-mono font-bold px-2 py-0.5 rounded shadow-sm">
+                                                        <span className="bg-slate-800 text-white font-mono font-bold text-xs px-2 py-0.5 rounded">
                                                             {formatSocDisplay(opt.s)}
                                                         </span>
-                                                        <span className="text-sm text-gray-600 font-medium">{opt.t}</span>
+                                                        <span className="text-sm font-semibold text-blue-700 group-hover:underline decoration-blue-300 underline-offset-4">
+                                                            {opt.t}
+                                                        </span>
                                                     </div>
-                                                    <div className="flex items-center flex-wrap gap-1">
+                                                    
+                                                    {/* REMOVED: The confusing "4 filings" gray text is gone. */}
+                                                </div>
+
+                                                {/* Meta Info: Years + O*NET */}
+                                                <div className="flex items-center flex-wrap gap-2 pl-1">
+                                                    <div className="flex gap-0.5">
                                                         {opt.y.map(year => (
-                                                            <span key={year} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${year >= 2024 ? "bg-green-50 text-green-700 border-green-100" : "bg-gray-50 text-gray-500 border-gray-100"}`}>{year}</span>
+                                                            <span key={year} className="text-[9px] bg-gray-100 text-gray-500 px-1 rounded border border-gray-200">
+                                                                {year}
+                                                            </span>
                                                         ))}
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 self-start md:self-center">
-                                                    <CheckCircle2 className="w-3.5 h-3.5" /> <span className="font-bold">{opt.n}</span> filings <ChevronRight className="w-4 h-4 ml-1 text-gray-300" />
-                                                </div>
-                                            </div>
-                                            {opt.o && opt.o.length > 0 && (
-                                                <div className="mt-1 pl-1 border-l-2 border-blue-200 ml-1">
-                                                    <div className="flex items-start gap-1.5 pl-2 text-[11px] text-gray-500">
-                                                        <Network className="w-3 h-3 text-blue-400 mt-0.5 flex-shrink-0" />
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <span className="font-medium text-gray-400">Includes O*NET Codes:</span>
-                                                            {opt.o.map((onet, i) => (
-                                                                <span key={i} className="text-gray-600 block">• {onet.split(":")[1].trim()}</span>
-                                                            ))}
+                                                    
+                                                    {opt.o && opt.o.length > 0 && (
+                                                        <div className="flex items-center gap-1 text-[10px] text-gray-400 border-l border-gray-300 pl-2 ml-1">
+                                                            <Network className="w-3 h-3" />
+                                                            <span className="truncate max-w-[200px]">
+                                                                {opt.o[0].split(":")[1].trim()}
+                                                            </span>
                                                         </div>
-                                                    </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
+
+                    {sortedTitles.length === 0 && titleSearch && (
+                        <div className="text-center py-12 text-gray-400">
+                            <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p>No titles match "{titleSearch}"</p>
+                        </div>
+                    )}
                 </div>
             </div>
         )}
