@@ -410,19 +410,6 @@ function WageMapContent() {
                     <div className="bg-white p-2 rounded-full shadow-sm h-fit">
                         <Info className="w-5 h-5 text-blue-600" />
                     </div>
-                    <div>
-                        <h3 className="text-base font-bold text-gray-900 mb-1">
-                            Note for Business Intelligence Analysts
-                        </h3>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                            Business Intelligence Analysts and Data Scientists currently share the same classification code 
-                            <span className="mx-1.5 font-mono font-bold text-gray-800 bg-white px-2 py-0.5 rounded border border-gray-200">15-2051</span>.
-                        </p>
-                        <p className="mt-2 text-sm text-gray-600">
-                            If you are searching for <span className="font-medium text-gray-900">Business Intelligence Analyst</span> salary data, 
-                            please search for <span className="font-bold text-blue-700">Data Scientist</span> to see the correct H1B filing records.
-                        </p>
-                    </div>
                 </div>
             </div>
             {/* -------------------------------------------------------- */}
