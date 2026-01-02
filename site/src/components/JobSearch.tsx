@@ -43,6 +43,7 @@ export default function JobSearch({
   }, [initialValue]);
 
   useEffect(() => {
+    // If the input matches the initial value exactly, don't pop open the menu
     if (initialValue && query === initialValue) {
         setIsOpen(false);
         return;
@@ -53,9 +54,18 @@ export default function JobSearch({
       setIsOpen(false);
       return;
     }
+
+    const lowerQuery = query.toLowerCase();
+
+    // --- UPDATED FILTER LOGIC ---
     const matches = jobs
-      .filter((j) => j.title && j.title.toLowerCase().includes(query.toLowerCase()))
+      .filter((j) => 
+        // Search by Title OR by SOC Code
+        (j.title && j.title.toLowerCase().includes(lowerQuery)) || 
+        (j.soc && j.soc.includes(lowerQuery))
+      )
       .slice(0, 10);
+      
     setFiltered(matches);
     
     if (matches.length > 0) setIsOpen(true);
@@ -68,13 +78,12 @@ export default function JobSearch({
   };
 
   return (
-    // FIX: z-[100] ensures this sits on top of everything
     <div className="relative w-full z-[100]" ref={wrapperRef}>
       <div className="relative">
         <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
         <input
           type="text"
-          placeholder="Search job (e.g. Software Developer)..."
+          placeholder="Search job title (e.g. Software) or Code (e.g. 15-1252)..."
           className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black transition-all"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -87,6 +96,7 @@ export default function JobSearch({
                 onClick={() => { 
                     setQuery(""); 
                     setIsOpen(false); 
+                    onSelect("", ""); // Optional: Clear the map selection too?
                 }}
                 className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
             >
@@ -104,7 +114,14 @@ export default function JobSearch({
               onClick={() => handleSelect(job)}
             >
               <div className="font-medium text-sm">{job.title}</div>
-              <div className="text-xs text-gray-400 font-mono">{job.soc}</div>
+              <div className="text-xs text-gray-400 font-mono">
+                {/* Highlight the code if the user is searching for it */}
+                {query.length > 2 && job.soc.includes(query) ? (
+                    <span className="bg-yellow-100 text-yellow-800 font-bold px-1 rounded">{job.soc}</span>
+                ) : (
+                    job.soc
+                )}
+              </div>
             </li>
           ))}
         </ul>
