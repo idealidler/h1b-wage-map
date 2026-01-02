@@ -1,81 +1,96 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Search, Building2, Briefcase, ChevronRight, AlertCircle, CheckCircle2, Loader2, Calendar, X, TrendingUp, HelpCircle, ArrowLeft, Network } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Search, Building2, Briefcase, ChevronRight, AlertCircle, CheckCircle2, Loader2, ArrowLeft, Network, TrendingUp, HelpCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+// --- TYPES ---
 interface SocOption {
-  s: string; // SOC Code
-  t: string; // Title
-  n: number; // Count
-  y: number[]; // Years
-  o?: string[]; // O*NET Codes (Optional)
+  s: string; t: string; n: number; y: number[]; o?: string[];
 }
-
 interface CompanyMap {
-  [company: string]: {
-    [title: string]: SocOption[]; 
-  };
+  [company: string]: { [title: string]: SocOption[] };
 }
 
 export default function LcaSearch() {
   const router = useRouter();
   
-  const [data, setData] = useState<CompanyMap | null>(null);
-  const [loading, setLoading] = useState(true);
+  // CACHE: We store loaded shards here so we don't re-fetch "GO" every time
+  const [dataCache, setDataCache] = useState<CompanyMap>({});
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [companySearch, setCompanySearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [titleSearch, setTitleSearch] = useState("");
   
+  // Track which shard key we last fetched to avoid dupes
+  const lastFetchedKey = useRef<string>("");
+
+  // --- DYNAMIC FETCHING LOGIC ---
   useEffect(() => {
-    fetch("/company_soc_map.json")
+    // 1. We need at least 2 characters to know which file to load
+    if (companySearch.length < 2) return;
+
+    // 2. Determine the Shard Key (e.g. "GO" for Google)
+    let key = companySearch.slice(0, 2).toUpperCase();
+    
+    // Handle special chars/numbers (fallback to '00')
+    if (!/^[A-Z]{2}$/.test(key)) {
+        if (/^[A-Z]/.test(key)) { /* "A_" case */ }
+        else { key = "00"; }
+    }
+
+    // 3. If we already have this data, stop.
+    if (dataCache[key] || lastFetchedKey.current === key) return;
+
+    setLoading(true);
+    lastFetchedKey.current = key; // Mark as fetching
+
+    fetch(`/db/${key}.json`)
       .then((res) => {
-        if (!res.ok) throw new Error("Could not load database.");
+        if (!res.ok) throw new Error("No data"); // File might not exist if no companies start with 'XZ'
         return res.json();
       })
       .then((json) => {
-        setData(json);
+        // Merge new data into our cache
+        setDataCache(prev => ({ ...prev, ...json }));
         setLoading(false);
       })
-      .catch((err) => {
-        console.error(err);
-        setError("Database missing.");
+      .catch(() => {
+        // Ignore 404s (just means no companies exist for that prefix)
         setLoading(false);
       });
-  }, []);
 
-  // Visual helper: just removes .00 for display
+  }, [companySearch, dataCache]);
+
   const formatSocDisplay = (code: string) => code.replace(".00", "");
 
+  // --- FILTERING (Runs against the loaded Cache) ---
   const filteredCompanies = useMemo(() => {
-    if (!data || !companySearch) return [];
-    return Object.keys(data)
+    if (!companySearch || companySearch.length < 2) return [];
+    
+    // Search through EVERYTHING we have loaded in memory
+    return Object.keys(dataCache)
       .filter(c => c.includes(companySearch.toUpperCase()))
       .slice(0, 5);
-  }, [data, companySearch]);
+  }, [dataCache, companySearch]);
 
   const sortedTitles = useMemo(() => {
-    if (!selectedCompany || !data) return [];
-    const companyData = data[selectedCompany];
+    if (!selectedCompany || !dataCache[selectedCompany]) return [];
+    const companyData = dataCache[selectedCompany];
     const allTitles = Object.keys(companyData);
     const matches = allTitles.filter(t => t.includes(titleSearch.toUpperCase()));
-    const sorted = matches.sort((a, b) => {
+    
+    return matches.sort((a, b) => {
       const totalA = companyData[a].reduce((sum, opt) => sum + opt.n, 0);
       const totalB = companyData[b].reduce((sum, opt) => sum + opt.n, 0);
       return totalB - totalA;
-    });
-
-    return titleSearch ? sorted.slice(0, 20) : sorted.slice(0, 5);
-  }, [selectedCompany, data, titleSearch]);
+    }).slice(0, 20); // Top 20
+  }, [selectedCompany, dataCache, titleSearch]);
 
   const handleSelectResult = (socCode: string, socTitle: string) => {
-    // --- THE FIX: STRICT PARENT MAPPING ---
-    // If code is "15-2051.01", we split by "." and take the first part "15-2051"
-    // This ensures it matches your Wage Map JSON files (which are all Parent SOCs)
     const parentSoc = socCode.split('.')[0]; 
-    
     router.push(`/?soc=${parentSoc}&title=${encodeURIComponent(socTitle)}`);
   };
 
@@ -85,26 +100,13 @@ export default function LcaSearch() {
     setTitleSearch("");
   };
 
-  if (loading) return (
-    <div className="h-64 flex flex-col items-center justify-center text-gray-400 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-        <p className="text-sm font-medium">Loading Records...</p>
-    </div>
-  );
-
-  if (error) return (
-    <div className="h-48 flex flex-col items-center justify-center text-red-500 gap-2 bg-red-50 rounded-xl border border-red-100">
-        <AlertCircle className="w-6 h-6" />
-        <p className="text-sm font-bold">{error}</p>
-    </div>
-  );
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 min-h-[500px]">
         
         {!selectedCompany ? (
             <div className="space-y-6 max-w-xl mx-auto mt-6">
-                {/* HOW TO USE NOTE */}
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3 text-sm text-blue-900">
                     <HelpCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
                     <div className="space-y-1">
@@ -112,7 +114,6 @@ export default function LcaSearch() {
                         <ul className="list-disc pl-4 space-y-0.5 text-blue-800">
                             <li>Search for your employer (e.g. "Google").</li>
                             <li>See the exact job titles they filed in LCA.</li>
-                            <li>Find the <strong>SOC Code</strong> used for your role.</li>
                         </ul>
                     </div>
                 </div>
@@ -122,13 +123,21 @@ export default function LcaSearch() {
                         type="text"
                         value={companySearch}
                         onChange={(e) => setCompanySearch(e.target.value)}
-                        placeholder="Search Employer Name..."
+                        placeholder="Search Employer Name (e.g. GOOGLE)..."
                         autoFocus
                         className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl shadow-sm focus:ring-4 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all text-lg font-bold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
                     />
                     <Search className="w-6 h-6 text-gray-400 absolute left-4 top-4" />
                     
-                    {companySearch && filteredCompanies.length > 0 && (
+                    {/* LOADING INDICATOR */}
+                    {loading && (
+                        <div className="absolute right-4 top-4">
+                            <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                        </div>
+                    )}
+
+                    {/* RESULTS */}
+                    {companySearch.length >= 2 && filteredCompanies.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden divide-y divide-gray-100">
                             {filteredCompanies.map(comp => (
                                 <button
@@ -149,7 +158,6 @@ export default function LcaSearch() {
             </div>
         ) : (
             <div className="space-y-6">
-                
                 {/* COMPANY HEADER */}
                 <div className="sticky top-0 z-20 bg-white pb-4 border-b border-gray-100">
                     <button 
@@ -186,22 +194,20 @@ export default function LcaSearch() {
                     {!titleSearch && (
                         <div className="flex items-center gap-1.5 text-xs text-purple-600 font-medium px-1 mt-2 animate-in fade-in">
                             <TrendingUp className="w-3.5 h-3.5" />
-                            Showing top 5 titles by volume
+                            Showing top titles by volume
                         </div>
                     )}
                 </div>
 
-                {/* RESULTS LIST */}
+                {/* JOB TITLES LIST (Same as before) */}
                 <div className="space-y-3 pb-8">
                     {sortedTitles.map(title => {
-                        const options = data![selectedCompany][title];
-                        
+                        const options = dataCache[selectedCompany][title];
                         return (
                             <div key={title} className="w-full bg-white rounded-xl border border-gray-200 shadow-sm hover:border-purple-300 transition-all overflow-hidden group/card">
                                 <div className="bg-gray-50/50 px-5 py-3 border-b border-gray-100">
                                     <h4 className="font-bold text-gray-900 text-sm md:text-base">{title}</h4>
                                 </div>
-                                
                                 <div className="divide-y divide-gray-100">
                                     {options.map((opt, idx) => (
                                         <button
@@ -212,46 +218,29 @@ export default function LcaSearch() {
                                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                                                 <div className="space-y-1.5">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="bg-white border border-gray-200 text-gray-700 text-xs font-mono font-bold px-2 py-0.5 rounded shadow-sm group-hover:border-purple-200 group-hover:text-purple-700">
+                                                        <span className="bg-white border border-gray-200 text-gray-700 text-xs font-mono font-bold px-2 py-0.5 rounded shadow-sm">
                                                             {formatSocDisplay(opt.s)}
                                                         </span>
-                                                        <span className="text-sm text-gray-600 font-medium">
-                                                            {opt.t}
-                                                        </span>
+                                                        <span className="text-sm text-gray-600 font-medium">{opt.t}</span>
                                                     </div>
-                                                    
-                                                    {/* Years Badges */}
                                                     <div className="flex items-center flex-wrap gap-1">
                                                         {opt.y.map(year => (
-                                                            <span key={year} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                                                                year >= 2024 
-                                                                    ? "bg-green-50 text-green-700 border-green-100" 
-                                                                    : "bg-gray-50 text-gray-500 border-gray-100"
-                                                            }`}>
-                                                                {year}
-                                                            </span>
+                                                            <span key={year} className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${year >= 2024 ? "bg-green-50 text-green-700 border-green-100" : "bg-gray-50 text-gray-500 border-gray-100"}`}>{year}</span>
                                                         ))}
                                                     </div>
                                                 </div>
-
                                                 <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 self-start md:self-center">
-                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    <span className="font-bold">{opt.n}</span> filings
-                                                    <ChevronRight className="w-4 h-4 ml-1 text-gray-300" />
+                                                    <CheckCircle2 className="w-3.5 h-3.5" /> <span className="font-bold">{opt.n}</span> filings <ChevronRight className="w-4 h-4 ml-1 text-gray-300" />
                                                 </div>
                                             </div>
-
-                                            {/* O*NET HINT */}
                                             {opt.o && opt.o.length > 0 && (
                                                 <div className="mt-1 pl-1 border-l-2 border-blue-200 ml-1">
                                                     <div className="flex items-start gap-1.5 pl-2 text-[11px] text-gray-500">
                                                         <Network className="w-3 h-3 text-blue-400 mt-0.5 flex-shrink-0" />
                                                         <div className="flex flex-col gap-0.5">
-                                                            <span className="font-medium text-gray-400">Commonly used for O*NET Codes:</span>
+                                                            <span className="font-medium text-gray-400">Includes O*NET Codes:</span>
                                                             {opt.o.map((onet, i) => (
-                                                                <span key={i} className="text-gray-600 block">
-                                                                    • {onet.split(":")[1].trim()} <span className="text-gray-400 font-mono">({onet.split(":")[0]})</span>
-                                                                </span>
+                                                                <span key={i} className="text-gray-600 block">• {onet.split(":")[1].trim()}</span>
                                                             ))}
                                                         </div>
                                                     </div>
@@ -263,13 +252,6 @@ export default function LcaSearch() {
                             </div>
                         );
                     })}
-                    
-                    {sortedTitles.length === 0 && titleSearch && (
-                        <div className="text-center py-12 text-gray-400">
-                            <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                            <p>No job titles match "{titleSearch}"</p>
-                        </div>
-                    )}
                 </div>
             </div>
         )}
