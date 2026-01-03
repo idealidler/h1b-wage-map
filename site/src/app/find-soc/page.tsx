@@ -122,7 +122,7 @@ export default function FindSocPage() {
             {activeTab === "ai" && (
                 <div className="animate-in fade-in slide-in-from-left-4 duration-300">
                     
-                    {/* A. HOW IT WORKS (Visual Guide) */}
+                    {/* A. HOW IT WORKS */}
                     <div className="bg-blue-50/50 border-b border-blue-50 p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                         <div className="flex flex-col items-center gap-2">
                             <div className="bg-white p-2 rounded-lg shadow-sm text-blue-600">
@@ -147,34 +147,39 @@ export default function FindSocPage() {
                         </div>
                     </div>
 
-                    {/* B. INPUT AREA */}
+                    {/* B. INPUT AREA (Updated for User Friendliness) */}
                     <div className="relative">
                         <textarea 
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
+                            // CLEAN: No padding bottom hacks or floating elements blocking text
                             className="w-full h-48 p-6 resize-none focus:outline-none text-gray-900 text-base leading-relaxed placeholder-gray-400"
                             placeholder="Example: 'I am a Software Engineer working with React, Node.js and AWS. I design scalable APIs and manage cloud infrastructure...'"
                         />
-                        <div className="absolute bottom-4 right-6 flex items-center gap-3">
-                             <div className="flex items-center gap-1.5 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-100">
-                                <ShieldCheck className="w-3 h-3" />
-                                Private & Anonymous
-                             </div>
-                             <span className="text-xs font-medium text-gray-300 uppercase tracking-wider flex items-center gap-1">
-                                <Bot className="w-3 h-3" /> Llama 3
-                             </span>
-                        </div>
                     </div>
                     
-                    <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-between items-center">
-                        <div className="text-xs text-gray-500 flex items-center gap-1.5">
-                            <Info className="w-4 h-4 text-blue-600" />
-                            <span>Privacy: Your text is not stored.</span>
+                    {/* FOOTER BAR (Moved Badges Here) */}
+                    <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        
+                        {/* Left: Trust Signals */}
+                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                             <div className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                Private & Anonymous
+                             </div>
+                             
+                             <div className="h-4 w-px bg-gray-300 hidden sm:block"></div>
+                             
+                             <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                                <Bot className="w-3.5 h-3.5" /> Llama 3
+                             </span>
                         </div>
+
+                        {/* Right: Action Button */}
                         <button
                             onClick={handleAnalyze}
                             disabled={loading || !input.trim()}
-                            className={`px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm flex items-center gap-2
+                            className={`w-full sm:w-auto px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm flex items-center justify-center gap-2
                                 ${loading || !input.trim() 
                                     ? "bg-gray-300 cursor-not-allowed" 
                                     : "bg-blue-700 hover:bg-blue-800 hover:shadow-md hover:-translate-y-0.5"

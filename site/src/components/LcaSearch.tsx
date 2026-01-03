@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Building2, Briefcase, ChevronDown, CheckCircle2, Loader2, ArrowLeft, Network, TrendingUp, HelpCircle, FileText } from "lucide-react";
+import { Search, Building2, Briefcase, ChevronDown, CheckCircle2, Loader2, ArrowLeft, Network, TrendingUp, HelpCircle, FileText, Database, ExternalLink, ShieldCheck, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // --- TYPES ---
@@ -98,23 +98,14 @@ export default function LcaSearch() {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 min-h-[500px]">
+    // REMOVED min-h-[500px] to fix white space/aspect ratio issue
+    <div className="space-y-6 animate-in fade-in duration-500">
         
         {!selectedCompany ? (
-            <div className="space-y-6 max-w-xl mx-auto mt-6">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3 text-sm text-blue-900">
-                    <HelpCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                    <div className="space-y-1">
-                        <p className="font-bold">How to use Company Data:</p>
-                        <ul className="list-disc pl-4 space-y-0.5 text-blue-800">
-                            <li>Search for your employer (e.g. "Google").</li>
-                            <li>Find your internal job title.</li>
-                            <li>See the exact SOC Code they filed.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="relative group">
+            <div className="space-y-8 max-w-xl mx-auto mt-4">
+                
+                {/* --- 1. SEARCH INPUT --- */}
+                <div className="relative group z-30">
                     <input
                         type="text"
                         value={companySearch}
@@ -143,13 +134,75 @@ export default function LcaSearch() {
                                     className="w-full text-left px-5 py-4 hover:bg-purple-50 text-base font-bold text-gray-700 flex items-center justify-between group transition-colors"
                                 >
                                     {comp}
-                                    {/* Using a Chevron instead of Arrow to look more like a menu */}
                                     <ChevronDown className="w-5 h-5 text-gray-300 group-hover:text-purple-500 -rotate-90" />
                                 </button>
                             ))}
                         </div>
                     )}
                 </div>
+
+                {/* --- 2. DATA TRANSPARENCY CARD (Restored 3-Column Layout) --- */}
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center gap-2">
+                        <Database className="w-4 h-4 text-purple-600" />
+                        <h3 className="text-sm font-bold text-gray-800">Where does this data come from?</h3>
+                    </div>
+                    
+                    <div className="p-5 grid gap-6 sm:grid-cols-3 text-sm">
+                        
+                        {/* Column 1 */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-gray-900">
+                                <Briefcase className="w-4 h-4 text-blue-500" />
+                                1. Job Title
+                            </div>
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                                This is the internal title your company wrote on <strong>Form ETA-9035</strong> (LCA) when applying for the visa.
+                            </p>
+                        </div>
+
+                        {/* Column 2 */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-gray-900">
+                                <FileText className="w-4 h-4 text-purple-500" />
+                                2. SOC Code
+                            </div>
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                                Employers <strong>must</strong> map your role to a government SOC Code to determine your Prevailing Wage.
+                            </p>
+                        </div>
+
+                        {/* Column 3 */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-gray-900">
+                                <ShieldCheck className="w-4 h-4 text-green-600" />
+                                3. Validation
+                            </div>
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                                We aggregate only <strong>Certified</strong> filings from the official OFLC Disclosure Data.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Footer Actions (Updated with FY Years) */}
+                    <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-600">
+                            <Clock className="w-3.5 h-3.5 text-blue-600" />
+                            Data: FY 2022, 2023, 2024 & 2025
+                        </div>
+                        
+                        <a 
+                            href="https://www.dol.gov/agencies/eta/foreign-labor/performance" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 hover:underline"
+                        >
+                            Verify at Official DOL Data Center
+                            <ExternalLink className="w-3 h-3" />
+                        </a>
+                    </div>
+                </div>
+
             </div>
         ) : (
             <div className="space-y-6">
@@ -252,8 +305,6 @@ export default function LcaSearch() {
                                                             {opt.t}
                                                         </span>
                                                     </div>
-                                                    
-                                                    {/* REMOVED: The confusing "4 filings" gray text is gone. */}
                                                 </div>
 
                                                 {/* Meta Info: Years + O*NET */}
