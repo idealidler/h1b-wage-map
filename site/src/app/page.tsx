@@ -348,15 +348,15 @@ function WageMapContent() {
                             </div>
                         </div>
 
-                        {/* ITEM 3: SALARY RANGES (New) */}
+                        {/* ITEM 3: BAIT & SWITCH (REPLACED "Salary Ranges" or "Below Level 1") */}
                         <div className="flex gap-3">
-                            <div className="bg-amber-100 p-2 rounded-lg h-fit">
-                                <FileWarning className="w-5 h-5 text-amber-700" />
+                            <div className="bg-white p-1.5 rounded-md h-fit shadow-sm">
+                                <FileWarning className="w-4 h-4 text-red-600" />
                             </div>
                             <div>
-                                <h4 className="font-bold text-gray-900">Salary Ranges</h4>
+                                <h4 className="font-bold text-gray-900">Prohibited: "Bait & Switch"</h4>
                                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                                    If your offer states a range (e.g. $100k-$120k), the <strong>minimum ($100k)</strong> is used for lottery weighting.
+                                    Moving to a low-cost area <i>solely</i> for registration and moving back to a high-cost area after selection is flagged as fraud. <strong>Petitions can be revoked.</strong>
                                 </p>
                             </div>
                         </div>
@@ -403,16 +403,6 @@ function WageMapContent() {
                     </div>
                 </div>
             </div>
-
-            {/* --- NEW ADDITION: BI ANALYST & DATA SCIENTIST NOTE --- */}
-            <div className="mt-8 pt-8 border-t border-gray-100">
-                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 flex gap-4">
-                    <div className="bg-white p-2 rounded-full shadow-sm h-fit">
-                        <Info className="w-5 h-5 text-blue-600" />
-                    </div>
-                </div>
-            </div>
-            {/* -------------------------------------------------------- */}
 
         </div>
 
