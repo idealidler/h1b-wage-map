@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Search, ChevronRight, Info, Bot, Database, AlertTriangle, FileText, Cpu, MousePointerClick, ShieldCheck, ArrowRight } from "lucide-react";
+import { ArrowLeft, Sparkles, Search, ChevronRight, Info, Bot, Database, AlertTriangle, FileText, Cpu, MousePointerClick, ShieldCheck, ArrowRight, Linkedin, Mail, MessageSquareHeart } from "lucide-react";
 import Link from "next/link";
 import LcaSearch from "@/components/LcaSearch"; 
 
@@ -152,7 +152,6 @@ export default function FindSocPage() {
                         <textarea 
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            // CLEAN: No padding bottom hacks or floating elements blocking text
                             className="w-full h-48 p-6 resize-none focus:outline-none text-gray-900 text-base leading-relaxed placeholder-gray-400"
                             placeholder="Example: 'I am a Software Engineer working with React, Node.js and AWS. I design scalable APIs and manage cloud infrastructure...'"
                         />
@@ -204,7 +203,7 @@ export default function FindSocPage() {
         
         {/* 4. AI RESULTS SECTION */}
         {activeTab === "ai" && results.length > 0 && (
-             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6 pb-12">
+             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
                 
                 {/* Instruction Banner */}
                 <div className="flex items-center gap-2 justify-center py-2 bg-blue-50 text-blue-800 rounded-lg text-sm font-bold border border-blue-100">
@@ -248,7 +247,7 @@ export default function FindSocPage() {
 
         {/* 5. DISCLAIMER (Only on AI Tab) */}
         {activeTab === "ai" && (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mt-8 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mt-6 opacity-70 hover:opacity-100 transition-opacity">
                 <div className="bg-orange-50 px-5 py-3 border-b border-orange-100 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-orange-600" />
                     <h3 className="text-sm font-bold text-gray-900">Important Disclaimer</h3>
@@ -260,6 +259,40 @@ export default function FindSocPage() {
                 </div>
             </div>
         )}
+
+        {/* 6. FEEDBACK & CONTACT (New Section) */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-6 mt-6 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="bg-white p-3 rounded-full shadow-sm text-blue-600 hidden sm:block">
+                     <MessageSquareHeart className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                    <h3 className="font-bold text-gray-900 text-lg">Did this tool help you?</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed max-w-xl">
+                        I built this to help navigate the new H-1B rules. If you found it useful or have any feedback, please reach out! I'd love to hear your thoughts.
+                    </p>
+                </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-3 mt-5 sm:ml-[4.5rem]">
+                <a 
+                    href="https://www.linkedin.com/in/akshayjain128/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:text-[#0077b5] hover:border-[#0077b5] transition-all shadow-sm w-full sm:w-auto justify-center"
+                >
+                    <Linkedin className="w-4 h-4" />
+                    Connect on LinkedIn
+                </a>
+                <a 
+                    href="mailto:akshayjain128@gmail.com"
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:text-red-600 hover:border-red-200 transition-all shadow-sm w-full sm:w-auto justify-center"
+                >
+                    <Mail className="w-4 h-4" />
+                    akshayjain128@gmail.com
+                </a>
+            </div>
+        </div>
 
       </div>
     </main>
