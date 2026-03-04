@@ -7,42 +7,40 @@ const inter = Inter({ subsets: ["latin"] });
 
 // --- SEO CONFIGURATION ---
 export const metadata: Metadata = {
-  // 1. Set your Base URL so images/links work correctly
-  metadataBase: new URL('https://wagelevelh1b.com'), 
-  
-  // 2. The "Clickbait" Title that ranks
+  metadataBase: new URL("https://www.wagelevelh1b.com"),
   title: {
-    default: "H1B Wage Map 2027 - Weighted Selection Probabilities (FY2027)",
+    default: "H-1B Wage Map FY 2027 | Prevailing Wage Levels by County",
     template: "%s | H1B Wage Map",
   },
-  
-  // 3. The description that shows up in Google Snippets
-  description: "Explore H-1B weighted selection probabilities under the FY 2027 rule. Interactive map of official Department of Labor wage levels (Level 1-4) by role and county.",
-  
-  // 4. Keywords for Search Engines
+
+  description:
+    "Interactive H-1B wage map using official U.S. Department of Labor data. Find SOC codes, compare wage levels (L1-L4), and check county-level prevailing wages for FY 2027.",
+
+  alternates: {
+    canonical: "/",
+  },
+
   keywords: [
-    "H1B Weighted Selection 2027", 
-    "Weighted Selection Rule", 
-    "H1B Wage Rule",
-    "H1B Wage Map", 
-    "LCA Search", 
-    "H1B Wage Map",
-    "H1B Calculator", 
-    "FY 2027 Visa Rules", 
-    "Wage Level Checker"
+    "H1B wage map",
+    "H-1B prevailing wage",
+    "H1B wage level",
+    "SOC code finder",
+    "LCA employer filings",
+    "FY 2027 H1B",
+    "county prevailing wage",
   ],
 
-  // 5. Social Media Sharing (Open Graph)
   openGraph: {
-    title: "H1B Wage Map 2027 - Weighted Selection Probabilities",
-    description: "See how salary level affects weighted entries under FY2027 H-1B selection. Interactive U.S. county wage map.",
-    url: "https://wagelevelh1b.com",
+    title: "H-1B Wage Map FY 2027",
+    description:
+      "Find SOC codes and explore county-level prevailing wage levels (L1-L4) with official Department of Labor data.",
+    url: "https://www.wagelevelh1b.com",
     siteName: "H1B Wage Map",
     locale: "en_US",
     type: "website",
     images: [
       {
-        url: "/og-image.png", // Make sure to add a screenshot named 'og-image.png' to your 'public' folder!
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "H1B Wage Map Preview",
@@ -50,18 +48,24 @@ export const metadata: Metadata = {
     ],
   },
 
-  // 6. Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "H1B Wage Map 2027",
-    description: "Explore H-1B weighted selection probabilities under the FY 2027 rule.",
+    title: "H-1B Wage Map FY 2027",
+    description:
+      "Explore official county-level prevailing wages, find SOC codes, and compare wage levels.",
   },
 
-  // 7. Robot crawling instructions
   robots: {
     index: true,
     follow: true,
-  }
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -70,30 +74,43 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   
-  // --- JSON-LD STRUCTURED DATA (The "Rich Snippet" Trick) ---
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "H1B Wage Map FY 2027",
-    "applicationCategory": "BusinessApplication",
-    "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD",
-    },
-    "description": "A tool to explore H-1B weighted selection probabilities under the FY 2027 rule using official Department of Labor wage data.",
-    "author": {
-      "@type": "Person",
-      "name": "Akshay Jain",
-      "url": "https://www.linkedin.com/in/akshayjain128/"
-    }
+    "@graph": [
+      {
+        "@type": "WebSite",
+        name: "H1B Wage Map",
+        url: "https://www.wagelevelh1b.com",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://www.wagelevelh1b.com/?soc={search_term_string}",
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: "H1B Wage Map FY 2027",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+        },
+        description:
+          "A tool to explore H-1B prevailing wage levels by county, find SOC codes, and review FY 2027 rule references using official Department of Labor data.",
+        author: {
+          "@type": "Person",
+          name: "Akshay Jain",
+          url: "https://www.linkedin.com/in/akshayjain128/",
+        },
+      },
+    ],
   };
 
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* Inject JSON-LD for Google */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

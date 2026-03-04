@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Map as MapIcon, Sparkles, Building2 } from "lucide-react";
+import { Map as MapIcon, Sparkles, Building2, CircleHelp } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -68,9 +68,28 @@ export default function Navbar() {
             <Sparkles className="w-4 h-4" aria-hidden="true" />
             Find SOC using AI
           </Link>
+          <Link
+            href="/faq"
+            aria-current={pathname === "/faq" ? "page" : undefined}
+            className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] ${
+              pathname === "/faq"
+                ? "bg-blue-50 text-[var(--brand-primary)]"
+                : "text-gray-600 hover:text-[var(--brand-primary)] hover:bg-gray-50"
+            }`}
+          >
+            <CircleHelp className="w-4 h-4" aria-hidden="true" />
+            FAQ
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
+           <Link
+              href="/faq"
+              className="md:hidden flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 px-3 py-2 rounded-md hover:bg-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+           >
+              <CircleHelp className="w-3.5 h-3.5" aria-hidden="true" />
+              FAQ
+           </Link>
            <Link
               href="/#find-soc-employer"
               onClick={markEmployerIntent}

@@ -7,7 +7,8 @@ import JobSearch from "@/components/JobSearch";
 import WageMap from "@/components/WageMap";
 import LcaSearch from "@/components/LcaSearch";
 import Navbar from "@/components/Navbar";
-import { Linkedin, Github, Link as LinkIcon, Check, ArrowRight, ArrowDown, Database, ShieldCheck, Landmark, FileText } from "lucide-react";
+import SiteFooter from "@/components/SiteFooter";
+import { Link as LinkIcon, Check, Database, ShieldCheck, Landmark, FileText } from "lucide-react";
 
 const FR_RULE_URL =
   "https://www.federalregister.gov/documents/2025/12/29/2025-23853/weighted-selection-process-for-registrants-and-petitioners-seeking-to-file-cap-subject-h-1b";
@@ -122,7 +123,7 @@ function WageMapContent() {
                 H-1B Wage Map FY 2027 🇺🇸
               </h1>
               <p className="text-sm sm:text-base text-[var(--foreground-muted)] mt-1.5 max-w-3xl">
-                Find your SOC code and instantly see county-level prevailing wage levels on the map.
+                Find your SOC code and check prevailing wage levels across U.S. counties in one interactive view.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -198,9 +199,9 @@ function WageMapContent() {
         <section id="find-soc-employer" className={`scroll-mt-24 rounded-2xl border bg-white p-5 sm:p-6 shadow-sm transition-all duration-500 ${employerSpotlight ? "border-[var(--brand-primary)] ring-2 ring-blue-200 shadow-md" : "border-[var(--border-subtle)]"}`}>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Find SOC by Employer</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Find SOC Code by Employer LCA Filings</h2>
               <p className="text-sm text-[var(--foreground-muted)] mt-1">
-                Search your employer&apos;s historical LCA filings and select the closest SOC mapping.
+                Search historical employer LCA filings to find the closest SOC code before opening the wage map.
               </p>
             </div>
           </div>
@@ -233,23 +234,7 @@ function WageMapContent() {
         </section>
       </div>
 
-      <footer className="bg-white border-t border-[var(--border-subtle)] mt-6 py-6">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="text-center md:text-left">
-            <p className="text-sm text-gray-600 font-medium">Official wage data from U.S. Department of Labor.</p>
-            <p className="text-xs text-gray-500 mt-1">Not legal advice. For informational purposes only.</p>
-          </div>
-          <div className="flex items-center gap-5">
-            <span className="text-sm font-medium text-gray-700">Developed by Akshay Jain</span>
-            <a href="https://www.linkedin.com/in/akshayjain128/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[var(--brand-primary)] transition-colors">
-              <Linkedin className="w-5 h-5" />
-            </a>
-            <a href="https://github.com/idealidler" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[var(--brand-primary)] transition-colors">
-              <Github className="w-5 h-5" />
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

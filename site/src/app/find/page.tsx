@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
+import SiteFooter from "@/components/SiteFooter";
 
 interface AiResult {
   code: string;
@@ -137,10 +138,10 @@ export default function FindSocPage() {
         <header className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 shadow-sm space-y-5">
             <div className="space-y-3 text-center">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-                    Find SOC using AI
+                    Find Your SOC Code with AI
                 </h1>
                 <p className="text-gray-600 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed">
-                    Describe your day-to-day work and get official SOC options with clear match reasoning.
+                    Describe your role to get official SOC code options, then jump directly to the H-1B county wage map.
                 </p>
             </div>
         </header>
@@ -152,7 +153,7 @@ export default function FindSocPage() {
                             <div className="px-6 py-4 bg-white border-b border-[var(--border-subtle)] flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Sparkles className="w-4 h-4 text-[var(--brand-primary)]" />
-                                    <span className="text-sm font-semibold text-gray-900">Describe your day-to-day responsibilities</span>
+                                    <span className="text-sm font-semibold text-gray-900">AI SOC Matcher for H-1B roles</span>
                                 </div>
                                 <span className="text-xs font-medium text-gray-500">Include tasks, tools, and seniority for better accuracy</span>
                             </div>
@@ -334,6 +335,8 @@ export default function FindSocPage() {
         )}
 
       </div>
+
+      <SiteFooter />
     </main>
   );
 }
