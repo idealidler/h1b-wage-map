@@ -1,207 +1,178 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Search, X, Network } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, KeyboardEvent } from "react";
+import { Search, X, Loader2 } from "lucide-react";
 
-interface Job {
-  soc: string;
-  title: string;
-  isAlias?: boolean; // New flag to style "Child" titles differently
-  parentTitle?: string; // To show "Maps to: Data Scientist"
+interface Job { code: string; base_soc: string; title: string; }
+
+interface JobSearchProps {
+  onSelect: (soc: string, title: string) => void;
+  initialValue?: string;
+  inputId?: string;
+  ariaDescribedBy?: string;
 }
 
-// --- INTELLIGENCE MAP (Same as your Python script) ---
-// This maps Parent SOC Codes to common "Real World" Job Titles
-const ONET_ALIASES: Record<string, string[]> = {
-  "15-1252": ["Software Developers", "Application Developers"],
-  "15-1253": ["Software Quality Assurance Analysts", "QA Testers", "SDET"],
-  "15-1299": ["Computer Systems Engineers", "DevOps Engineers", "Site Reliability Engineers", "SRE"],
-  "15-1211": ["Computer Systems Analysts", "Product Owners (Technical)", "Systems Architects"],
-  "15-1212": ["Information Security Analysts", "Cyber Security Analysts"],
-  "15-1231": ["Network Support Specialists", "IT Support Specialists"],
-  "15-1242": ["Database Administrators", "DBA"],
-  "15-1243": ["Database Architects", "Data Warehouse Architects"],
-  "15-2051": ["Business Intelligence Analysts", "Data Scientists", "Clinical Data Managers", "Data Engineers"],
-  "15-2031": ["Operations Research Analysts", "Supply Chain Analysts"],
-  "15-2041": ["Statisticians", "Biostatisticians"],
-  "15-2011": ["Actuaries"],
-  "13-1111": ["Management Analysts", "Business Analysts", "Management Consultants"],
-  "13-2011": ["Accountants", "Auditors", "CPA"],
-  "13-1161": ["Market Research Analysts", "Marketing Specialists"],
-  "11-3021": ["Computer and Information Systems Managers", "IT Managers", "Engineering Managers", "CTO"],
-  "11-2021": ["Marketing Managers", "Brand Managers"],
-  "17-2071": ["Electrical Engineers"],
-  "17-2141": ["Mechanical Engineers"],
-  "17-2061": ["Hardware Engineers"],
-};
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
-export default function JobSearch({ 
-  onSelect, 
-  initialValue 
-}: { 
-  onSelect: (soc: string, title: string) => void,
-  initialValue?: string 
-}) {
-  const [query, setQuery] = useState("");
+export default function JobSearch({
+  onSelect,
+  initialValue = "",
+  inputId = "soc-job-search-input",
+  ariaDescribedBy,
+}: JobSearchProps) {
+  const [query, setQuery] = useState(initialValue);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [filtered, setFiltered] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const debouncedQuery = useDebounce(query, 150);
+  const listboxId = "soc-job-search-results";
 
   useEffect(() => {
-    fetch("/job-index.json")
-      .then((res) => res.json())
-      .then((originalData: Job[]) => {
-        
-        // --- DATA AUGMENTATION STEP ---
-        // We take the official list and "inject" our O*NET aliases into it
-        const expandedJobs: Job[] = [...originalData];
-        
-        originalData.forEach((officialJob) => {
-            const aliases = ONET_ALIASES[officialJob.soc];
-            if (aliases) {
-                aliases.forEach(aliasTitle => {
-                    // Only add if it's not exactly the same as the official title to avoid dupes
-                    if (aliasTitle.toLowerCase() !== officialJob.title.toLowerCase()) {
-                        expandedJobs.push({
-                            soc: officialJob.soc,
-                            title: aliasTitle,
-                            isAlias: true,
-                            parentTitle: officialJob.title // Store "Data Scientist" as parent
-                        });
-                    }
-                });
-            }
-        });
-
-        setJobs(expandedJobs);
-      });
-
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    setIsLoading(true);
+    fetch("/soc_data.json").then((res) => res.json()).then((data: Job[]) => setJobs(data))
+      .catch((err) => console.error("Failed to load SOC data:", err)).finally(() => setIsLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (initialValue) {
-        setQuery(initialValue);
-    }
-  }, [initialValue]);
+  useEffect(() => { if (initialValue) setQuery(initialValue); }, [initialValue]);
 
-  useEffect(() => {
-    if (initialValue && query === initialValue) {
-        setIsOpen(false);
-        return;
-    }
-
-    if (query.length < 2) {
-      setFiltered([]);
-      setIsOpen(false);
-      return;
-    }
-
-    const lowerQuery = query.toLowerCase();
-
-    // Search by Title (Official OR Alias) OR Code
-    const matches = jobs
-      .filter((j) => 
-        (j.title && j.title.toLowerCase().includes(lowerQuery)) || 
-        (j.soc && j.soc.includes(lowerQuery))
-      )
-      // Sort logic: Exact startsWith matches first, then alias matches
+  const filtered = useMemo(() => {
+    if (debouncedQuery.length < 2 || debouncedQuery === initialValue) return [];
+    const lowerQuery = debouncedQuery.toLowerCase();
+    return jobs
+      .filter((j) => (j.title && j.title.toLowerCase().includes(lowerQuery)) || (j.code && j.code.includes(lowerQuery)))
       .sort((a, b) => {
          const aStarts = a.title.toLowerCase().startsWith(lowerQuery);
          const bStarts = b.title.toLowerCase().startsWith(lowerQuery);
          if (aStarts && !bStarts) return -1;
          if (!aStarts && bStarts) return 1;
          return 0;
-      })
-      .slice(0, 15); // Show a few more results since we have aliases now
-      
-    setFiltered(matches);
-    
-    if (matches.length > 0) setIsOpen(true);
-  }, [query, jobs, initialValue]);
+      }).slice(0, 15);
+  }, [debouncedQuery, jobs, initialValue]);
+
+  useEffect(() => {
+    setIsOpen(query.trim().length >= 2 && query !== initialValue);
+    setActiveIndex(-1);
+  }, [query, initialValue]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) setIsOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // FIXED: Hitting Enter now auto-selects the first result!
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : prev));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0) handleSelect(filtered[activeIndex]);
+      else if (filtered.length > 0) handleSelect(filtered[0]);
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const activeEl = listRef.current.children[activeIndex] as HTMLElement;
+      if (activeEl) activeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activeIndex]);
 
   const handleSelect = (job: Job) => {
-    setQuery(job.title);
-    
-    // CRITICAL: We pass the SOC Code (e.g. 15-2051)
-    // But for the "title" display in the UI, we prefer the Official Parent Title 
-    // This prevents confusion if the map says "Data Scientist" but the user selected "BI Analyst"
-    // (Or you can pass job.title if you want the UI to keep saying "BI Analyst")
-    onSelect(job.soc, job.parentTitle || job.title);
-    
+    const formattedCode = job.code.includes('.') ? job.code : `${job.code}.00`;
+    setQuery(`${formattedCode} - ${job.title}`); 
+    onSelect(formattedCode, job.title); 
     setIsOpen(false);
   };
 
   return (
     <div className="relative w-full z-[100]" ref={wrapperRef}>
       <div className="relative">
-        <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+        {isLoading ? (
+          <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--brand-primary)] animate-spin" />
+        ) : (
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        )}
         <input
+          id={inputId}
           type="text"
-          placeholder="Search job title (e.g. BI Analyst) or Code..."
-          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black transition-all"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => {
-             if (filtered.length > 0) setIsOpen(true);
-          }}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-describedby={ariaDescribedBy}
+          placeholder="Search by role or SOC code (e.g. Software Developers or 15-1252)"
+          className="w-full pl-12 pr-11 py-3.5 min-h-[48px] border border-[var(--border-subtle)] rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] focus:outline-none text-[15px] text-gray-900 transition-all font-medium placeholder:text-gray-400"
+          value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => { if (filtered.length > 0) setIsOpen(true); }}
         />
-        {query.length > 0 && (
-            <button 
-                onClick={() => { 
-                    setQuery(""); 
-                    setIsOpen(false); 
-                    onSelect("", ""); 
-                }}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+        {query.length > 0 && !isLoading && (
+            <button
+              aria-label="Clear search"
+              onClick={() => { setQuery(""); setIsOpen(false); onSelect("", ""); setActiveIndex(-1); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors rounded-md p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
             </button>
         )}
       </div>
 
-      {isOpen && filtered.length > 0 && (
-        <ul className="absolute w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 z-[100]">
-          {filtered.map((job, idx) => (
-            <li
-              key={`${job.soc}-${idx}`}
-              className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-gray-700 border-b border-gray-50 last:border-0 transition-colors"
-              onClick={() => handleSelect(job)}
-            >
-              <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                      <span className="font-medium text-sm flex items-center gap-2">
-                          {job.title}
-                          {/* Badge for Aliases */}
-                          {job.isAlias && (
-                              <span className="bg-purple-100 text-purple-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
-                                  <Network className="w-2.5 h-2.5" /> Mapped
-                              </span>
-                          )}
-                      </span>
-                      
-                      {/* Helper text: "Maps to Data Scientist" */}
-                      {job.isAlias && job.parentTitle && (
-                          <span className="text-[10px] text-gray-400 mt-0.5">
-                              Uses wage data for: <strong className="text-gray-500">{job.parentTitle}</strong>
-                          </span>
-                      )}
-                  </div>
-                  
-                  <div className="text-xs text-gray-400 font-mono text-right min-w-[60px]">
-                    {job.soc}
-                  </div>
-              </div>
+      {isOpen && (
+        <ul
+          id={listboxId}
+          role="listbox"
+          ref={listRef}
+          className="absolute w-full bg-white mt-2 border border-[var(--border-subtle)] rounded-xl shadow-xl max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 z-[100]"
+        >
+          {filtered.length > 0 ? (
+            <>
+              <li className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 bg-gray-50/70">
+                Top matches
+              </li>
+              {filtered.map((job, idx) => {
+                const formattedCode = job.code.includes('.') ? job.code : `${job.code}.00`;
+                return (
+                  <li
+                    key={`${job.code}-${idx}`}
+                    role="option"
+                    aria-selected={idx === activeIndex}
+                    className={`px-4 py-3.5 cursor-pointer border-b border-gray-50 last:border-0 transition-colors ${idx === activeIndex ? "bg-blue-50 text-blue-900" : "hover:bg-blue-50/70 text-gray-700"}`}
+                    onClick={() => handleSelect(job)}
+                  >
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="font-semibold text-[15px] text-gray-900">{job.title}</span>
+                      <div className="text-xs text-[var(--brand-primary)] font-mono font-semibold text-right min-w-[72px] bg-blue-50 border border-blue-100 px-2 py-1 rounded-md">
+                        {formattedCode}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </>
+          ) : (
+            <li className="px-4 py-4 text-sm text-gray-600 leading-relaxed">
+              No matches yet. Try a broader role keyword (for example, "software", "analyst", or "engineer").
             </li>
-          ))}
+          )}
         </ul>
       )}
     </div>
