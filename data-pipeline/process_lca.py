@@ -2,48 +2,16 @@ import pandas as pd
 import glob
 import os
 import json
-import gc
 import re
 import shutil
 
 # --- CONFIGURATION ---
 RAW_DATA_PATH = "raw_data/*.xlsx"
-# We now output to a FOLDER, not a single file
 OUTPUT_DIR = "../site/public/db" 
-
-# --- O*NET INTELLIGENCE MAP (Keep exactly as before) ---
-ONET_MAP = {
-    "15-1252": ["15-1252.00: Software Developers"],
-    "15-1253": ["15-1253.00: Software Quality Assurance Analysts and Testers"],
-    "15-1299": ["15-1299.08: Computer Systems Engineers/Architects", "15-1299.09: IT Project Managers"],
-    "15-1211": ["15-1211.00: Computer Systems Analysts"],
-    "15-1212": ["15-1212.00: Information Security Analysts"],
-    "15-1231": ["15-1231.00: Computer Network Support Specialists"],
-    "15-1241": ["15-1241.00: Computer Network Architects"],
-    "15-1242": ["15-1242.00: Database Administrators"],
-    "15-1243": ["15-1243.00: Database Architects"],
-    "15-2051": ["15-2051.01: Business Intelligence Analysts", "15-2051.02: Clinical Data Managers", "15-2051.00: Data Scientists"],
-    "15-2031": ["15-2031.00: Operations Research Analysts"],
-    "15-2041": ["15-2041.00: Statisticians"],
-    "15-2011": ["15-2011.00: Actuaries"],
-    "17-2071": ["17-2071.00: Electrical Engineers"],
-    "17-2072": ["17-2072.00: Electronics Engineers, Except Computer"],
-    "17-2141": ["17-2141.00: Mechanical Engineers"],
-    "17-2061": ["17-2061.00: Computer Hardware Engineers"],
-    "17-2051": ["17-2051.00: Civil Engineers"],
-    "17-2112": ["17-2112.00: Industrial Engineers"],
-    "13-1111": ["13-1111.00: Management Analysts"],
-    "13-2011": ["13-2011.00: Accountants and Auditors"],
-    "13-2051": ["13-2051.00: Financial Analysts"],
-    "13-1161": ["13-1161.00: Market Research Analysts and Marketing Specialists"],
-    "13-1081": ["13-1081.01: Logistics Engineers", "13-1081.02: Logistics Analysts"],
-    "11-3021": ["11-3021.00: Computer and Information Systems Managers"],
-    "11-2021": ["11-2021.00: Marketing Managers"],
-    "19-1029": ["19-1029.01: Bioinformatics Scientists"],
-    "19-1042": ["19-1042.00: Medical Scientists, Except Epidemiologists"]
-}
+REFERENCE_DATA_PATH = "reference_data/Occupation_Data.txt"
 
 # --- COLUMN MAPPING ---
+# Maps different column names the government might use across years to a standard name
 TARGET_COLS = {
     'status': ['CASE_STATUS', 'STATUS'],
     'company': ['EMPLOYER_NAME', 'EMPLOYER_LEGAL_BUSINESS_NAME'],
@@ -52,152 +20,199 @@ TARGET_COLS = {
     'soc_title': ['SOC_TITLE', 'SOC_NAME'] 
 }
 
-def clean_text(text):
-    if not isinstance(text, str):
-        return ""
-    return text.upper().strip().replace(".", "").replace(",", "")
+# ==========================================
+# Phase 1: Dynamic Data Loaders
+# ==========================================
 
-def extract_year_from_filename(filename):
+def build_onet_map(filepath: str) -> dict:
+    """
+    Dynamically builds the ONET mapping dictionary from the official DOL dataset.
+    """
+    if not os.path.exists(filepath):
+        print(f"⚠️ Warning: Reference file '{filepath}' not found.")
+        print("   Proceeding without O*NET enhancements.")
+        return {}
+        
+    try:
+        # O*NET text files are tab-separated
+        df = pd.read_csv(filepath, sep='\t')
+        
+        if 'O*NET-SOC Code' not in df.columns or 'Title' not in df.columns:
+            print("⚠️ Warning: Invalid O*NET dataset columns. Proceeding without map.")
+            return {}
+
+        # Extract Base SOC Code (e.g., "15-1252.00" -> "15-1252")
+        df['Base_SOC'] = df['O*NET-SOC Code'].astype(str).str.split('.').str[0]
+        
+        # Create formatted string ("15-1252.00: Software Developers")
+        df['Formatted_Title'] = df['O*NET-SOC Code'] + ": " + df['Title']
+        
+        # Group by Base SOC into a dictionary of lists
+        dynamic_map = df.groupby('Base_SOC')['Formatted_Title'].apply(list).to_dict()
+        
+        print(f"📚 Successfully loaded {len(dynamic_map)} base SOC codes from O*NET database.")
+        return dynamic_map
+        
+    except Exception as e:
+        print(f"❌ Error building O*NET map: {e}")
+        return {}
+
+# Build the map ONCE at module level
+ONET_MAP = build_onet_map(REFERENCE_DATA_PATH)
+
+
+# ==========================================
+# Phase 2: Helper Functions
+# ==========================================
+
+def extract_year_from_filename(filename: str) -> int:
+    """Extracts the FY year from the Excel filename."""
     match = re.search(r"FY(\d{4})", filename, re.IGNORECASE)
-    if match:
-        return int(match.group(1))
-    return 0
+    return int(match.group(1)) if match else 0
 
-def get_columns_to_load(header_row):
-    clean_headers = [h.strip().upper() for h in header_row]
+def get_shard_key(company_name: str) -> str:
+    """Returns a 2-character prefix for the database shard file."""
+    if not pd.isna(company_name) and company_name:
+        prefix = str(company_name)[:2].upper()
+        if prefix.isalpha() and len(prefix) == 2:
+            return prefix
+        elif prefix[0].isalpha():
+            return prefix[0] + "_"
+    return "00"
+
+
+# ==========================================
+# Phase 3: Core Pipeline Logic
+# ==========================================
+
+def process_single_file(filepath: str) -> pd.DataFrame:
+    """Reads, cleans, and aggregates a single Excel file to minimize memory footprint."""
+    year = extract_year_from_filename(os.path.basename(filepath))
+    
+    # Read headers efficiently
+    try:
+        header_df = pd.read_excel(filepath, nrows=0)
+    except Exception as e:
+        print(f"   ❌ Failed to read {os.path.basename(filepath)}: {e}")
+        return pd.DataFrame()
+        
+    clean_headers = [str(h).strip().upper() for h in header_df.columns]
+    
     cols_to_use = []
     rename_map = {}
     
     for standard_name, possible_names in TARGET_COLS.items():
-        found = False
         for possible in possible_names:
-            possible_clean = possible.strip().upper()
-            if possible_clean in clean_headers:
-                idx = clean_headers.index(possible_clean)
-                original_name = header_row[idx]
+            if possible in clean_headers:
+                original_name = header_df.columns[clean_headers.index(possible)]
                 cols_to_use.append(original_name)
                 rename_map[original_name] = standard_name
-                found = True
                 break
-        if not found:
-            return None, None
-    return cols_to_use, rename_map
+                
+    if len(cols_to_use) != len(TARGET_COLS):
+        print(f"   ⚠️ Skipping {os.path.basename(filepath)}: Missing required columns.")
+        return pd.DataFrame()
 
-def get_shard_key(company_name):
-    """
-    Returns a 2-character key for the file name.
-    e.g. "GOOGLE" -> "GO"
-    e.g. "123 INC" -> "00" (Special bucket for numbers)
-    """
-    if not company_name:
-        return "ZZ"
+    # Load only the mapped columns
+    df = pd.read_excel(filepath, usecols=cols_to_use)
+    df = df.rename(columns=rename_map)
     
-    # Take first 2 chars
-    prefix = company_name[:2].upper()
+    # Vectorized Cleaning (High Performance)
+    df['status'] = df['status'].astype(str).str.upper().str.strip()
+    df = df[df['status'] == 'CERTIFIED']
     
-    # If it starts with letters, use them. Otherwise use '00'
-    if prefix.isalpha() and len(prefix) == 2:
-        return prefix
-    elif prefix[0].isalpha():
-        # Short names like "X INC" -> "X_"
-        return prefix[0] + "_"
-    else:
-        return "00"
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.dropna(subset=['company', 'title', 'soc_code'])
+    
+    # Fast regex string replacements
+    df['company'] = df['company'].astype(str).str.upper().str.strip().str.replace(r'[.,]', '', regex=True)
+    df['title'] = df['title'].astype(str).str.upper().str.strip().str.replace(r'[.,]', '', regex=True)
+    df['soc_code'] = df['soc_code'].astype(str).str.replace(".00", "", regex=False)
+    
+    # Aggregate at the file level
+    grouped = df.groupby(['company', 'title', 'soc_code', 'soc_title'], as_index=False).size()
+    grouped.rename(columns={'size': 'count'}, inplace=True)
+    grouped['year'] = year
+    
+    print(f"   📉 Extracted {len(grouped)} unique combinations.")
+    return grouped
+
 
 def process_files():
-    # 1. Setup Output Directory
+    """Main execution function that coordinates the ETL process."""
     if os.path.exists(OUTPUT_DIR):
         print(f"🧹 Cleaning old database at {OUTPUT_DIR}...")
         shutil.rmtree(OUTPUT_DIR)
     os.makedirs(OUTPUT_DIR)
 
-    # 2. Process Data (Same as before)
     all_files = glob.glob(RAW_DATA_PATH)
     print(f"🏭 Found {len(all_files)} raw files.")
     
-    master_counts = {}
+    # 1. Process files individually to save RAM
+    processed_dfs = []
+    for filepath in all_files:
+        print(f"\n📄 Processing: {os.path.basename(filepath)}...")
+        file_df = process_single_file(filepath)
+        if not file_df.empty:
+            processed_dfs.append(file_df)
 
-    for filename in all_files:
-        print(f"\n📄 Reading: {os.path.basename(filename)}...")
-        year = extract_year_from_filename(os.path.basename(filename))
+    if not processed_dfs:
+        print("❌ No data processed. Exiting.")
+        return
+
+    print("\n🔗 Combining and aggregating across all years (This may take a moment)...")
+    
+    # 2. Combine all file-level aggregates
+    master_df = pd.concat(processed_dfs, ignore_index=True)
+    
+    # 3. Final aggregation across all years
+    final_agg = master_df.groupby(['company', 'title', 'soc_code', 'soc_title']).agg(
+        total_count=('count', 'sum'),
+        years=('year', lambda x: sorted(list(set(x))))
+    ).reset_index()
+
+    print("\n🏁 Generating Shards...")
+    shards = {}
+
+    # 4. Build the sharded dictionary
+    for row in final_agg.itertuples(index=False):
+        onet_titles = ONET_MAP.get(row.soc_code, [])
+        candidate = {
+            "s": row.soc_code,
+            "t": row.soc_title,
+            "n": row.total_count,
+            "y": row.years,
+            "o": onet_titles
+        }
         
-        try:
-            header_df = pd.read_excel(filename, nrows=0)
-            cols_to_use, rename_map = get_columns_to_load(list(header_df.columns))
-            if not cols_to_use: continue
-                
-            df = pd.read_excel(filename, usecols=cols_to_use)
-            df = df.rename(columns=rename_map)
-            
-            df['status'] = df['status'].astype(str).str.upper().str.strip()
-            df = df[df['status'] == 'CERTIFIED']
-            
-            if len(df) == 0: continue
-
-            df = df.dropna(subset=['company', 'title', 'soc_code'])
-            df['company'] = df['company'].apply(clean_text)
-            df['title'] = df['title'].apply(clean_text)
-            df['soc_code'] = df['soc_code'].astype(str).str.replace(".00", "", regex=False)
-
-            grouped = df.groupby(['company', 'title', 'soc_code', 'soc_title']).size().reset_index(name='count')
-            print(f"   📉 Found {len(grouped)} unique patterns.")
-
-            for _, row in grouped.iterrows():
-                key = (row['company'], row['title'])
-                soc_key = str(row['soc_code'])
-                
-                if key not in master_counts: master_counts[key] = {}
-                if soc_key not in master_counts[key]:
-                    master_counts[key][soc_key] = {'name': str(row['soc_title']), 'count': 0, 'years': set()}
-                
-                master_counts[key][soc_key]['count'] += int(row['count'])
-                master_counts[key][soc_key]['years'].add(year)
-            
-            del df; del grouped; gc.collect()
-
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-
-    print("\n🏁 Splitting & Saving Shards...")
-
-    # 3. SHARDING LOGIC
-    # We group the final big dictionary into smaller dictionaries based on prefix
-    shards = {} 
-
-    for (company, title), soc_candidates in master_counts.items():
+        shard_key = get_shard_key(row.company)
         
-        candidate_list = []
-        for code, data in soc_candidates.items():
-            onet_titles = ONET_MAP.get(code, [])
-            candidate_list.append({
-                "s": code, "t": data['name'], "n": data['count'], 
-                "y": sorted(list(data['years'])), "o": onet_titles
-            })
-        
-        candidate_list.sort(key=lambda x: x['n'], reverse=True)
-        filtered = [c for c in candidate_list if c['n'] >= 3 or len(candidate_list) == 1][:3]
-        if not filtered: continue
-        
-        # Determine which file this belongs to
-        shard_key = get_shard_key(company)
-        
-        if shard_key not in shards:
-            shards[shard_key] = {}
-        
-        if company not in shards[shard_key]:
-            shards[shard_key][company] = {}
-            
-        shards[shard_key][company][title] = filtered
+        # Build nested dictionary safely
+        shards.setdefault(shard_key, {}).setdefault(row.company, {}).setdefault(row.title, []).append(candidate)
 
-    # 4. Save each shard as a separate file
+    # 5. Filter for Top 3 candidates and export
     count = 0
-    for key, data in shards.items():
-        with open(f'{OUTPUT_DIR}/{key}.json', 'w') as f:
-            json.dump(data, f)
+    for shard_key, companies in shards.items():
+        for company, titles in companies.items():
+            for title, candidates in titles.items():
+                # Sort by count descending
+                candidates.sort(key=lambda x: x['n'], reverse=True)
+                # Keep top 3 where count >= 3, or if it's the only option
+                filtered = [c for c in candidates if c['n'] >= 3 or len(candidates) == 1][:3]
+                companies[company][title] = filtered
+                
+            # Remove job titles that ended up empty after filtering
+            companies[company] = {k: v for k, v in companies.items() if v}
+            
+        # Write to JSON
+        with open(os.path.join(OUTPUT_DIR, f"{shard_key}.json"), 'w', encoding='utf-8') as f:
+            json.dump(companies, f, ensure_ascii=False)
         count += 1
         
-    print(f"✅ DONE! Created {count} database shards in {OUTPUT_DIR}")
-    print("   (Each file is now tiny and Git-safe!)")
+    print(f"\n✅ SUCCESS! Created {count} database shards in {OUTPUT_DIR}")
+
 
 if __name__ == "__main__":
     process_files()

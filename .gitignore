@@ -10,6 +10,7 @@ venv/
 env/
 __pycache__/
 *.pyc
+*.tsbuildinfo
 
 # --- SYSTEM & IDE ---
 .DS_Store
