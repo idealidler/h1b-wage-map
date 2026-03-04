@@ -41,6 +41,11 @@ interface TitleInsight {
 
 type SortMode = "filings" | "alphabetical";
 
+interface LcaSearchProps {
+  inputId?: string;
+  spotlight?: boolean;
+}
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -65,7 +70,7 @@ function sortYearsDesc(years: number[]): number[] {
   return [...years].filter(Number.isFinite).sort((a, b) => b - a);
 }
 
-export default function LcaSearch() {
+export default function LcaSearch({ inputId = "employer-search-input", spotlight = false }: LcaSearchProps) {
   const router = useRouter();
 
   const [dataCache, setDataCache] = useState<CompanyMap>({});
@@ -84,6 +89,7 @@ export default function LcaSearch() {
   const [visibleCount, setVisibleCount] = useState(8);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const companyInputRef = useRef<HTMLInputElement>(null);
   const companyListboxId = "company-search-results";
 
   const debouncedCompanySearch = useDebounce(companySearch, 200);
@@ -103,6 +109,11 @@ export default function LcaSearch() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!spotlight) return;
+    companyInputRef.current?.focus();
+  }, [spotlight]);
 
   useEffect(() => {
     const query = debouncedCompanySearch.trim();
@@ -245,7 +256,13 @@ export default function LcaSearch() {
       {!selectedCompany ? (
         <div className="max-w-3xl mx-auto space-y-4">
           <div className="relative" ref={searchContainerRef}>
-            <div className="relative flex items-center bg-white rounded-2xl border border-[var(--border-subtle)] shadow-sm focus-within:ring-2 focus-within:ring-[var(--brand-primary)] focus-within:border-[var(--brand-primary)] transition-all overflow-hidden">
+            <div
+              className={`relative flex items-center bg-white rounded-2xl border shadow-sm focus-within:ring-2 focus-within:ring-[var(--brand-primary)] focus-within:border-[var(--brand-primary)] transition-all overflow-hidden ${
+                spotlight
+                  ? "border-[var(--brand-primary)] ring-2 ring-blue-100 shadow-md animate-pulse"
+                  : "border-[var(--border-subtle)]"
+              }`}
+            >
               <div className="ml-4 shrink-0 flex items-center justify-center w-5 h-5">
                 {isSearchingCompanies ? (
                   <Loader2 className="w-5 h-5 text-[var(--brand-primary)] animate-spin" />
@@ -255,6 +272,8 @@ export default function LcaSearch() {
               </div>
 
               <input
+                id={inputId}
+                ref={companyInputRef}
                 type="text"
                 role="combobox"
                 aria-expanded={isDropdownOpen}
