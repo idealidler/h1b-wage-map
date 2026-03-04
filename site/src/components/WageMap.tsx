@@ -252,7 +252,6 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             mapStyle="mapbox://styles/mapbox/light-v11"
             mapboxAccessToken={TOKEN}
             interactiveLayerIds={['county-fill']}
-            cooperativeGestures={true} 
             onMove={(evt) => { if (evt.originalEvent && selectedInfo) setSelectedInfo(null); }}
             onMouseMove={(event) => {
                 if (selectedInfo) return; 

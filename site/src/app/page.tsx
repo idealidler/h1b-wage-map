@@ -44,6 +44,7 @@ function WageMapContent() {
   const [selectedSoc, setSelectedSoc] = useState<string>("15-1252.00");
   const [jobTitle, setJobTitle] = useState<string>("Software Developers");
   const [salary, setSalary] = useState<number | "">(120000);
+  const [employerSpotlight, setEmployerSpotlight] = useState(false);
   const salaryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -62,6 +63,53 @@ function WageMapContent() {
     setSalary(rawValue ? parseInt(rawValue, 10) : "");
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.history.scrollRestoration = "manual";
+
+    const navEntries = window.performance.getEntriesByType("navigation");
+    const navType = navEntries[0] as PerformanceNavigationTiming | undefined;
+    const isReload = navType?.type === "reload";
+
+    if (!isReload) return;
+
+    window.sessionStorage.removeItem("focus-employer-soc");
+    if (window.location.hash) {
+      window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}`);
+    }
+
+    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const triggerEmployerFocus = () => {
+      const shouldFocus =
+        window.location.hash === "#find-soc-employer" ||
+        window.sessionStorage.getItem("focus-employer-soc") === "1";
+      if (!shouldFocus) return;
+
+      window.sessionStorage.removeItem("focus-employer-soc");
+
+      setEmployerSpotlight(true);
+      const section = document.getElementById("find-soc-employer");
+      const input = document.getElementById("employer-search-input") as HTMLInputElement | null;
+
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => input?.focus(), 450);
+      setTimeout(() => setEmployerSpotlight(false), 4200);
+    };
+
+    triggerEmployerFocus();
+    window.addEventListener("focus-employer-soc", triggerEmployerFocus as EventListener);
+    window.addEventListener("hashchange", triggerEmployerFocus);
+    return () => {
+      window.removeEventListener("focus-employer-soc", triggerEmployerFocus as EventListener);
+      window.removeEventListener("hashchange", triggerEmployerFocus);
+    };
+  }, []);
+
   return (
     <main className="min-h-screen flex flex-col relative font-sans">
       <Navbar />
@@ -79,10 +127,6 @@ function WageMapContent() {
             </div>
             <div className="flex items-center gap-2">
               <SocialShare />
-              <Link href="/find" className="btn-secondary !py-2 !px-4 !min-h-[36px] text-sm inline-flex items-center gap-1.5">
-                Find SOC using AI <ArrowRight className="w-4 h-4" />
-              </Link>
-              
             </div>
           </div>
         </section>
@@ -151,7 +195,7 @@ function WageMapContent() {
           </div>
         </section>
 
-        <section id="find-soc-employer" className="scroll-mt-24 rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 shadow-sm">
+        <section id="find-soc-employer" className={`scroll-mt-24 rounded-2xl border bg-white p-5 sm:p-6 shadow-sm transition-all duration-500 ${employerSpotlight ? "border-[var(--brand-primary)] ring-2 ring-blue-200 shadow-md" : "border-[var(--border-subtle)]"}`}>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Find SOC by Employer</h2>
@@ -159,11 +203,8 @@ function WageMapContent() {
                 Search your employer&apos;s historical LCA filings and select the closest SOC mapping.
               </p>
             </div>
-            <Link href="/find" className="btn-secondary !py-2 !px-4 !min-h-[36px] text-sm inline-flex items-center gap-1.5">
-              Find SOC using AI <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
-          <LcaSearch />
+          <LcaSearch inputId="employer-search-input" spotlight={employerSpotlight} />
         </section>
 
         <section className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 shadow-sm">

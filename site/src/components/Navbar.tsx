@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Map as MapIcon, Sparkles } from "lucide-react";
+import { Map as MapIcon, Sparkles, Building2 } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const markEmployerIntent = () => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem("focus-employer-soc", "1");
+    window.dispatchEvent(new Event("focus-employer-soc"));
+  };
 
   return (
     <nav
@@ -44,6 +49,14 @@ export default function Navbar() {
             Wage Map
           </Link>
           <Link
+            href="/#find-soc-employer"
+            onClick={markEmployerIntent}
+            className="px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 text-gray-600 hover:text-[var(--brand-primary)] hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+          >
+            <Building2 className="w-4 h-4" aria-hidden="true" />
+            Find SOC using Employer
+          </Link>
+          <Link
             href="/find"
             aria-current={pathname === "/find" ? "page" : undefined}
             className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] ${
@@ -58,6 +71,14 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
+           <Link
+              href="/#find-soc-employer"
+              onClick={markEmployerIntent}
+              className="md:hidden flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-primary)] bg-blue-50 border border-blue-100 px-3 py-2 rounded-md hover:bg-blue-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+           >
+              <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
+              SOC by Employer
+           </Link>
            <Link
               href="/find"
               className="md:hidden flex items-center gap-1.5 text-xs font-bold text-white bg-[var(--brand-primary)] px-3 py-2 rounded-md hover:bg-[#3367D6] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
