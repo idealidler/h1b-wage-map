@@ -1,26 +1,62 @@
 @import "tailwindcss";
 
 :root {
+  /* Core surfaces */
   --background: #ffffff;
-  --foreground: #171717;
+  --background-alt: #f7f9fc;
+  --surface-muted: #f1f3f4;
+
+  /* Text */
+  --foreground: #202124;
+  --foreground-muted: #5f6368;
+
+  /* Brand system (trust + clarity + optimism) */
+  --brand-primary: #4285f4;
+  --brand-primary-hover: #3367d6;
+  --brand-success: #10b981;
+  --brand-accent: #f9ab00;
+  --brand-warning: #d93025;
+
+  /* UI structure */
+  --border-subtle: #dadce0;
+  --border-strong: #c7cdd3;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-foreground-muted: var(--foreground-muted);
+  --color-surface-muted: var(--surface-muted);
+  --color-brand-blue: var(--brand-primary);
+  --color-brand-green: var(--brand-success);
+  --color-brand-yellow: var(--brand-accent);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  
+  --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background-alt); 
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px; 
+  line-height: 1.6; 
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-[var(--brand-primary)] hover:bg-[#3367D6] text-white font-medium py-3 px-6 rounded-lg transition-colors shadow-sm active:scale-[0.98] min-h-[44px] flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-primary)];
+  }
+  
+  .btn-secondary {
+    @apply bg-white hover:bg-surface-muted text-gray-700 font-medium py-3 px-6 rounded-lg border border-[var(--border-subtle)] transition-colors shadow-sm min-h-[44px] flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-primary)];
+  }
+
+  .card-container {
+    @apply bg-white rounded-xl border border-[var(--border-subtle)] shadow-sm;
+  }
 }

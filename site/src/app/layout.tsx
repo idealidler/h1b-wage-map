@@ -12,16 +12,16 @@ export const metadata: Metadata = {
   
   // 2. The "Clickbait" Title that ranks
   title: {
-    default: "H1B Wage Map 2027 - Calculate Lottery Odds (FY2027)",
+    default: "H1B Wage Map 2027 - Weighted Selection Probabilities (FY2027)",
     template: "%s | H1B Wage Map",
   },
   
   // 3. The description that shows up in Google Snippets
-  description: "Check your H-1B lottery odds under the new FY 2027 Weighted Selection Rule. Interactive map of DOL wage levels (Level 1-4) for Software Engineers, Data Scientists, and more.",
+  description: "Explore H-1B weighted selection probabilities under the FY 2027 rule. Interactive map of official Department of Labor wage levels (Level 1-4) by role and county.",
   
   // 4. Keywords for Search Engines
   keywords: [
-    "H1B Lottery 2027", 
+    "H1B Weighted Selection 2027", 
     "Weighted Selection Rule", 
     "H1B Wage Rule",
     "H1B Wage Map", 
@@ -34,8 +34,8 @@ export const metadata: Metadata = {
 
   // 5. Social Media Sharing (Open Graph)
   openGraph: {
-    title: "H1B Wage Map 2027 - Check Your Odds",
-    description: "New Rule Alert: See how your salary affects your H-1B lottery chances. Interactive US County Map.",
+    title: "H1B Wage Map 2027 - Weighted Selection Probabilities",
+    description: "See how salary level affects weighted entries under FY2027 H-1B selection. Interactive U.S. county wage map.",
     url: "https://wagelevelh1b.com",
     siteName: "H1B Wage Map",
     locale: "en_US",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "H1B Wage Map 2027",
-    description: "Calculate your H-1B lottery odds under the new FY 2027 rules.",
+    description: "Explore H-1B weighted selection probabilities under the FY 2027 rule.",
   },
 
   // 7. Robot crawling instructions
@@ -82,7 +82,7 @@ export default function RootLayout({
       "price": "0",
       "priceCurrency": "USD",
     },
-    "description": "A tool to calculate H-1B lottery selection odds based on the FY 2027 Weighted Selection Rule using official DOL wage data.",
+    "description": "A tool to explore H-1B weighted selection probabilities under the FY 2027 rule using official Department of Labor wage data.",
     "author": {
       "@type": "Person",
       "name": "Akshay Jain",

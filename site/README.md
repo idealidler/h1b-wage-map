@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# H1B GeoWage (site)
 
-## Getting Started
+Next.js App Router frontend for:
+- county-level H-1B prevailing wage visualization
+- SOC discovery via AI matching
+- SOC discovery via historical employer LCA mappings
 
-First, run the development server:
+## Quick Start
 
 ```bash
+cd site
+npm install
+npm run clean
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev`: local dev server (webpack; stable default)
+- `npm run dev:turbo`: local dev server with Turbopack
+- `npm run build`: production build (webpack)
+- `npm run start`: serve production build
+- `npm run clean`: remove `.next` cache/build output
+- `npm run lint`: run ESLint
 
-## Learn More
+## Current Routes
 
-To learn more about Next.js, take a look at the following resources:
+- `/`: Hero page
+  - wage map workspace
+  - SOC by employer flow (embedded)
+  - data sources section
+- `/find`: AI SOC finder page
+- `/api/match-soc`: AI SOC matching API endpoint
+- `/sitemap.xml`: generated from `src/app/sitemap.ts`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Core Components
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `src/components/WageMap.tsx`: map rendering, county popup logic, wage level UI
+- `src/components/LcaSearch.tsx`: employer -> title -> SOC flow
+- `src/components/JobSearch.tsx`: SOC/job search input on hero page
+- `src/components/Navbar.tsx`: top-level navigation
 
-## Deploy on Vercel
+## Data Sources in App
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `public/jobs/*.json`: county wage data by base SOC code
+- `public/db/*.json`: employer title-to-SOC historical mapping shards
+- `public/soc_data.json`: SOC reference used by AI matching and job search
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Layout
+
+```text
+site/
+  src/
+    app/
+      page.tsx           # Hero + map + employer flow
+      find/page.tsx      # AI SOC finder
+      api/match-soc/     # AI route
+      layout.tsx
+      globals.css
+    components/
+      WageMap.tsx
+      LcaSearch.tsx
+      JobSearch.tsx
+      Navbar.tsx
+  public/
+    jobs/
+    db/
+    soc_data.json
+```
+
+## Notes
+
+- This repository intentionally uses `public/soc_data.json` as canonical SOC reference for UI/API.
+- Generated files like `.next/` and `*.tsbuildinfo` should not be committed.

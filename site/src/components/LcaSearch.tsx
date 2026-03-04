@@ -1,348 +1,515 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Building2, Briefcase, ChevronDown, CheckCircle2, Loader2, ArrowLeft, Network, TrendingUp, HelpCircle, FileText, Database, ExternalLink, ShieldCheck, Clock } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Search,
+  SlidersHorizontal,
+  ShieldCheck,
+  X,
+  Heading1,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
-// --- TYPES ---
 interface SocOption {
-  s: string; t: string; n: number; y: number[]; o?: string[];
+  s: string;
+  t: string;
+  n: number;
+  y: number[];
+  o?: string[];
 }
+
 interface CompanyMap {
-  [company: string]: { [title: string]: SocOption[] };
+  [company: string]: {
+    [title: string]: SocOption[];
+  };
+}
+
+interface TitleInsight {
+  title: string;
+  options: SocOption[];
+  totalFilings: number;
+  primaryOption: SocOption;
+  dominancePct: number;
+}
+
+type SortMode = "filings" | "alphabetical";
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+function getShardKey(query: string): string {
+  const prefix = query.slice(0, 2).toUpperCase();
+  if (/^[A-Z]{2}$/.test(prefix)) return prefix;
+  if (/^[A-Z]/.test(prefix)) return `${prefix[0]}_`;
+  return "00";
+}
+
+function formatSocCode(code: string): string {
+  return code.includes(".") ? code : `${code}.00`;
+}
+
+function sortYearsDesc(years: number[]): number[] {
+  return [...years].filter(Number.isFinite).sort((a, b) => b - a);
 }
 
 export default function LcaSearch() {
   const router = useRouter();
-  
+
   const [dataCache, setDataCache] = useState<CompanyMap>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loadedShards, setLoadedShards] = useState<Set<string>>(new Set());
 
   const [companySearch, setCompanySearch] = useState("");
+  const [isCompanyInputFocused, setIsCompanyInputFocused] = useState(false);
+  const [loadingShard, setLoadingShard] = useState<string | null>(null);
+  const [companyError, setCompanyError] = useState<string | null>(null);
+
   const [selectedCompany, setSelectedCompany] = useState("");
   const [titleSearch, setTitleSearch] = useState("");
-  
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
 
-  const lastFetchedKey = useRef<string>("");
+  const [sortMode, setSortMode] = useState<SortMode>("filings");
+  const [visibleCount, setVisibleCount] = useState(8);
 
-  // --- DYNAMIC FETCHING ---
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const companyListboxId = "company-search-results";
+
+  const debouncedCompanySearch = useDebounce(companySearch, 200);
+  const normalizedCompanySearch = companySearch.trim();
+
+  const currentShard =
+    normalizedCompanySearch.length >= 2 ? getShardKey(normalizedCompanySearch) : null;
+  const isSearchingCompanies = loadingShard !== null && loadingShard === currentShard;
+  const isDropdownOpen = isCompanyInputFocused && normalizedCompanySearch.length >= 2;
+
   useEffect(() => {
-    if (companySearch.length < 2) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsCompanyInputFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    let key = companySearch.slice(0, 2).toUpperCase();
-    if (!/^[A-Z]{2}$/.test(key)) {
-        if (/^[A-Z]/.test(key)) { /* "A_" case */ }
-        else { key = "00"; }
+  useEffect(() => {
+    const query = debouncedCompanySearch.trim();
+    if (query.length < 2) {
+      setCompanyError(null);
+      setLoadingShard(null);
+      return;
     }
 
-    if (dataCache[key] || lastFetchedKey.current === key) return;
+    const key = getShardKey(query);
+    if (loadedShards.has(key)) return;
 
-    setLoading(true);
-    lastFetchedKey.current = key;
+    setLoadingShard(key);
+    setCompanyError(null);
 
-    fetch(`/db/${key}.json`)
+    const abortController = new AbortController();
+
+    fetch(`/db/${key}.json`, { signal: abortController.signal })
       .then((res) => {
-        if (!res.ok) throw new Error("No data");
+        if (!res.ok) throw new Error("Failed to load employer data");
         return res.json();
       })
-      .then((json) => {
-        setDataCache(prev => ({ ...prev, ...json }));
-        setLoading(false);
+      .then((json: CompanyMap) => {
+        setDataCache((prev) => ({ ...prev, ...json }));
+        setLoadedShards((prev) => {
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
       })
-      .catch(() => {
-        setLoading(false);
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        setCompanyError("Could not load employer data right now. Please try again.");
+      })
+      .finally(() => {
+        setLoadingShard((prev) => (prev === key ? null : prev));
       });
 
-  }, [companySearch, dataCache]);
-
-  const formatSocDisplay = (code: string) => code.replace(".00", "");
+    return () => abortController.abort();
+  }, [debouncedCompanySearch, loadedShards]);
 
   const filteredCompanies = useMemo(() => {
-    if (!companySearch || companySearch.length < 2) return [];
+    if (!normalizedCompanySearch || normalizedCompanySearch.length < 2) return [];
+
+    const searchUpper = normalizedCompanySearch.toUpperCase();
+
     return Object.keys(dataCache)
-      .filter(c => c.includes(companySearch.toUpperCase()))
-      .slice(0, 5);
-  }, [dataCache, companySearch]);
+      .filter((company) => company.includes(searchUpper))
+      .map((companyName) => {
+        const totalFilings = Object.values(dataCache[companyName]).reduce(
+          (acc, titleOptions) => acc + titleOptions.reduce((sum, option) => sum + option.n, 0),
+          0
+        );
+        return { name: companyName, filings: totalFilings };
+      })
+      .sort((a, b) => b.filings - a.filings)
+      .slice(0, 8);
+  }, [dataCache, normalizedCompanySearch]);
 
-  const sortedTitles = useMemo(() => {
+  const companyStats = useMemo(() => {
+    if (!selectedCompany || !dataCache[selectedCompany]) return null;
+
+    const data = dataCache[selectedCompany];
+    const titles = Object.keys(data);
+
+    let totalFilings = 0;
+    let minYear = Infinity;
+    let maxYear = -Infinity;
+
+    for (const title of titles) {
+      for (const option of data[title]) {
+        totalFilings += option.n;
+
+        option.y.forEach((year) => {
+          if (Number.isFinite(year)) {
+            minYear = Math.min(minYear, year);
+            maxYear = Math.max(maxYear, year);
+          }
+        });
+      }
+    }
+
+    return {
+      totalFilings,
+      uniqueRoles: titles.length,
+      coverageYears:
+        Number.isFinite(minYear) && Number.isFinite(maxYear) ? `${minYear}–${maxYear}` : "2022–2025",
+    };
+  }, [selectedCompany, dataCache]);
+
+  const preparedTitles = useMemo(() => {
     if (!selectedCompany || !dataCache[selectedCompany]) return [];
+
     const companyData = dataCache[selectedCompany];
-    const allTitles = Object.keys(companyData);
-    const matches = allTitles.filter(t => t.includes(titleSearch.toUpperCase()));
-    
-    return matches.sort((a, b) => {
-      const totalA = companyData[a].reduce((sum, opt) => sum + opt.n, 0);
-      const totalB = companyData[b].reduce((sum, opt) => sum + opt.n, 0);
-      return totalB - totalA;
-    }).slice(0, 5); 
-  }, [selectedCompany, dataCache, titleSearch]);
+    const upperQuery = titleSearch.trim().toUpperCase();
+    const titles = Object.keys(companyData).filter((title) => title.includes(upperQuery));
 
-  const handleSelectResult = (socCode: string, socTitle: string) => {
-    const parentSoc = socCode.split('.')[0]; 
-    router.push(`/?soc=${parentSoc}&title=${encodeURIComponent(socTitle)}`);
-  };
+    const mapped = titles.map<TitleInsight>((title) => {
+      const options = [...companyData[title]].sort((a, b) => b.n - a.n);
+      const totalFilings = options.reduce((sum, option) => sum + option.n, 0);
+      const primaryOption = options[0];
+      const dominancePct = totalFilings > 0 ? (primaryOption.n / totalFilings) * 100 : 0;
+      return { title, options, totalFilings, primaryOption, dominancePct };
+    });
 
-  const clearCompany = () => {
-    setSelectedCompany("");
-    setCompanySearch("");
-    setTitleSearch("");
+    const sorted = [...mapped].sort((a, b) => {
+      if (sortMode === "alphabetical") return a.title.localeCompare(b.title);
+      return b.totalFilings - a.totalFilings;
+    });
+
+    return sorted;
+  }, [selectedCompany, dataCache, titleSearch, sortMode]);
+
+  const visibleTitles = preparedTitles.slice(0, visibleCount);
+  const hasMoreTitles = preparedTitles.length > visibleCount;
+
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [selectedCompany, titleSearch, sortMode]);
+
+  const openCompany = (companyName: string) => {
+    setSelectedCompany(companyName);
     setExpandedJob(null);
+    setTitleSearch("");
+    setCompanySearch("");
+    setIsCompanyInputFocused(false);
   };
 
-  const toggleExpand = (title: string) => {
-    setExpandedJob(expandedJob === title ? null : title);
+  const clearCompanySearch = () => {
+    setCompanySearch("");
+    setCompanyError(null);
   };
 
-  if (error) return <div className="text-red-500">{error}</div>;
+  const goToWageMap = (option: SocOption) => {
+    router.push(`/?soc=${formatSocCode(option.s)}&title=${encodeURIComponent(option.t)}`);
+  };
 
   return (
-    // REMOVED min-h-[500px] to fix white space/aspect ratio issue
-    <div className="space-y-6 animate-in fade-in duration-500">
-        
-        {!selectedCompany ? (
-            <div className="space-y-8 max-w-xl mx-auto mt-4">
-                
-                {/* --- 1. SEARCH INPUT --- */}
-                <div className="relative group z-30">
-                    <input
-                        type="text"
-                        value={companySearch}
-                        onChange={(e) => setCompanySearch(e.target.value)}
-                        placeholder="Search Employer Name (e.g. GOOGLE)..."
-                        autoFocus
-                        className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl shadow-sm focus:ring-4 focus:ring-purple-100 focus:border-purple-500 outline-none transition-all text-lg font-bold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
-                    />
-                    <Search className="w-6 h-6 text-gray-400 absolute left-4 top-4" />
-                    
-                    {loading && (
-                        <div className="absolute right-4 top-4">
-                            <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                        </div>
-                    )}
+    <section className="w-full space-y-6 animate-in fade-in duration-500">
+      {!selectedCompany ? (
+        <div className="max-w-3xl mx-auto space-y-4">
+          <div className="relative" ref={searchContainerRef}>
+            <div className="relative flex items-center bg-white rounded-2xl border border-[var(--border-subtle)] shadow-sm focus-within:ring-2 focus-within:ring-[var(--brand-primary)] focus-within:border-[var(--brand-primary)] transition-all overflow-hidden">
+              <div className="ml-4 shrink-0 flex items-center justify-center w-5 h-5">
+                {isSearchingCompanies ? (
+                  <Loader2 className="w-5 h-5 text-[var(--brand-primary)] animate-spin" />
+                ) : (
+                  <Search className="w-5 h-5 text-gray-400" />
+                )}
+              </div>
 
-                    {companySearch.length >= 2 && filteredCompanies.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden divide-y divide-gray-100">
-                            {filteredCompanies.map(comp => (
-                                <button
-                                    key={comp}
-                                    onClick={() => {
-                                        setCompanySearch(comp);
-                                        setSelectedCompany(comp);
-                                    }}
-                                    className="w-full text-left px-5 py-4 hover:bg-purple-50 text-base font-bold text-gray-700 flex items-center justify-between group transition-colors"
-                                >
-                                    {comp}
-                                    <ChevronDown className="w-5 h-5 text-gray-300 group-hover:text-purple-500 -rotate-90" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+              <input
+                type="text"
+                role="combobox"
+                aria-expanded={isDropdownOpen}
+                aria-controls={companyListboxId}
+                aria-autocomplete="list"
+                value={companySearch}
+                onChange={(e) => setCompanySearch(e.target.value)}
+                onFocus={() => setIsCompanyInputFocused(true)}
+                placeholder="Search employer (e.g. Google, Deloitte, Microsoft)"
+                className="w-full py-4 px-3 bg-transparent border-0 outline-none focus:ring-0 text-gray-900 font-medium placeholder:text-gray-400 min-h-[54px]"
+              />
 
-                {/* --- 2. DATA TRANSPARENCY CARD (Restored 3-Column Layout) --- */}
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center gap-2">
-                        <Database className="w-4 h-4 text-purple-600" />
-                        <h3 className="text-sm font-bold text-gray-800">Where does this data come from?</h3>
-                    </div>
-                    
-                    <div className="p-5 grid gap-6 sm:grid-cols-3 text-sm">
-                        
-                        {/* Column 1 */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 font-bold text-gray-900">
-                                <Briefcase className="w-4 h-4 text-blue-500" />
-                                1. Job Title
-                            </div>
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                                This is the internal title your company wrote on <strong>Form ETA-9035</strong> (LCA) when applying for the visa.
-                            </p>
-                        </div>
-
-                        {/* Column 2 */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 font-bold text-gray-900">
-                                <FileText className="w-4 h-4 text-purple-500" />
-                                2. SOC Code
-                            </div>
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                                Employers <strong>must</strong> map your role to a government SOC Code to determine your Prevailing Wage.
-                            </p>
-                        </div>
-
-                        {/* Column 3 */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 font-bold text-gray-900">
-                                <ShieldCheck className="w-4 h-4 text-green-600" />
-                                3. Validation
-                            </div>
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                                We aggregate only <strong>Certified</strong> filings from the official OFLC Disclosure Data.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Footer Actions (Updated with FY Years) */}
-                    <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-600">
-                            <Clock className="w-3.5 h-3.5 text-blue-600" />
-                            Data: FY 2022, 2023, 2024 & 2025
-                        </div>
-                        
-                        <a 
-                            href="https://www.dol.gov/agencies/eta/foreign-labor/performance" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 hover:underline"
-                        >
-                            Verify at Official DOL Data Center
-                            <ExternalLink className="w-3 h-3" />
-                        </a>
-                    </div>
-                </div>
-
+              {companySearch && (
+                <button
+                  type="button"
+                  onClick={clearCompanySearch}
+                  className="mr-3 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Clear employer search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-        ) : (
-            <div className="space-y-6">
-                {/* HEADER */}
-                <div className="sticky top-0 z-20 bg-white pb-4 border-b border-gray-100">
-                    <button 
-                        onClick={clearCompany}
-                        className="group flex items-center justify-between w-full bg-purple-50 hover:bg-purple-100 p-4 rounded-xl border border-purple-100 transition-all"
+
+            {isDropdownOpen && (
+              <ul
+                id={companyListboxId}
+                role="listbox"
+                className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--border-subtle)] rounded-xl shadow-lg z-50 overflow-hidden divide-y divide-gray-100"
+              >
+                {filteredCompanies.map((company) => (
+                  <li key={company.name} role="option">
+                    <button
+                      type="button"
+                      onClick={() => openCompany(company.name)}
+                      className="w-full text-left px-4 py-3.5 flex items-center justify-between hover:bg-blue-50 transition-colors group"
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white p-2 rounded-lg shadow-sm">
-                                <Building2 className="w-5 h-5 text-purple-700" />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[10px] text-purple-600 font-bold uppercase tracking-wider mb-0.5">Selected Employer</p>
-                                <h3 className="text-lg font-bold text-gray-900 leading-none">{selectedCompany}</h3>
-                            </div>
+                      <div className="flex items-center gap-3">
+                        <Building2 className="w-5 h-5 text-gray-400 group-hover:text-[var(--brand-primary)] transition-colors" />
+                        <div>
+                          <span className="font-bold text-gray-900 block group-hover:text-[var(--brand-primary)] transition-colors">
+                            {company.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {company.filings.toLocaleString()} certified filings
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1 text-xs font-bold text-purple-600 bg-white px-3 py-1.5 rounded-full shadow-sm group-hover:text-purple-800">
-                            <ArrowLeft className="w-3 h-3" />
-                            Change
-                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[var(--brand-primary)] transition-transform group-hover:translate-x-0.5" />
                     </button>
-                    
-                    <div className="mt-4 relative">
-                        <input
-                            type="text"
-                            value={titleSearch}
-                            onChange={(e) => setTitleSearch(e.target.value)}
-                            placeholder={`Enter your current job title...`}
-                            autoFocus
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all font-medium text-gray-900 shadow-sm"
-                        />
-                        <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3" />
-                    </div>
+                  </li>
+                ))}
 
-                    {!titleSearch && (
-                        <div className="flex items-center gap-1.5 text-xs text-purple-600 font-medium px-1 mt-2 animate-in fade-in">
-                            <TrendingUp className="w-3.5 h-3.5" />
-                            Showing top 5 job titles
-                        </div>
-                    )}
+                {filteredCompanies.length === 0 && normalizedCompanySearch.length >= 2 && !isSearchingCompanies && (
+                  <li className="px-4 py-4 text-sm text-center text-gray-500 font-medium bg-gray-50/50">
+                    {companyError ?? "No company matches found. Try a broader search."}
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+
+        </div>
+      ) : (
+        <div className="space-y-4 max-w-5xl mx-auto">
+          <div className="sticky top-2 z-20 rounded-2xl border border-[var(--border-subtle)] bg-white/95 backdrop-blur p-5 sm:p-6 shadow-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCompany("");
+                setTitleSearch("");
+                setExpandedJob(null);
+              }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--brand-primary)] hover:underline mb-4"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Employer Search
+            </button>
+
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{selectedCompany}</h2>
+                <p className="text-gray-600 mt-1">
+                  Pick your role title to view available SOC mappings.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 lg:min-w-[280px]">
+                <div className="rounded-xl bg-gray-50 px-4 py-3 text-center">
+                  <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-500">Total Filings</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{companyStats?.totalFilings.toLocaleString()}</p>
                 </div>
-
-                {/* --- RESULTS LIST --- */}
-                <div className="space-y-3 pb-8">
-                    {sortedTitles.map(title => {
-                        const options = dataCache[selectedCompany][title];
-                        const totalFilings = options.reduce((sum, o) => sum + o.n, 0);
-                        const isExpanded = expandedJob === title;
-
-                        return (
-                            <div key={title} className={`bg-white rounded-xl border transition-all overflow-hidden ${isExpanded ? "border-purple-300 shadow-md ring-1 ring-purple-100" : "border-gray-200 shadow-sm hover:border-purple-200"}`}>
-                                
-                                {/* 1. MAIN ROW (Job Title) */}
-                                <button 
-                                    onClick={() => toggleExpand(title)}
-                                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50/50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${isExpanded ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"}`}>
-                                            <Briefcase className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">
-                                                Company Job Title
-                                            </p>
-                                            <h4 className="font-bold text-gray-900 text-base">{title}</h4>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                        <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full border border-gray-200">
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                                            <span className="text-xs font-bold text-gray-700">{totalFilings} filings</span>
-                                        </div>
-                                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} />
-                                    </div>
-                                </button>
-
-                                {/* 2. EXPANDED CONTENT (SOC Options) */}
-                                {isExpanded && (
-                                    <div className="border-t border-gray-100 bg-gray-50/30 p-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
-                                        <p className="px-1 text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">
-                                            Select Official Category:
-                                        </p>
-                                        
-                                        {options.map((opt, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleSelectResult(opt.s, opt.t)}
-                                                className="w-full bg-white p-3 rounded-lg border border-gray-200 hover:border-purple-400 hover:shadow-sm transition-all text-left group flex flex-col gap-2"
-                                            >
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="bg-slate-800 text-white font-mono font-bold text-xs px-2 py-0.5 rounded">
-                                                            {formatSocDisplay(opt.s)}
-                                                        </span>
-                                                        <span className="text-sm font-semibold text-blue-700 group-hover:underline decoration-blue-300 underline-offset-4">
-                                                            {opt.t}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Meta Info: Years + O*NET */}
-                                                <div className="flex items-center flex-wrap gap-2 pl-1">
-                                                    <div className="flex gap-0.5">
-                                                        {opt.y.map(year => (
-                                                            <span key={year} className="text-[9px] bg-gray-100 text-gray-500 px-1 rounded border border-gray-200">
-                                                                {year}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                    
-                                                    {opt.o && opt.o.length > 0 && (
-                                                        <div className="flex items-center gap-1 text-[10px] text-gray-400 border-l border-gray-300 pl-2 ml-1">
-                                                            <Network className="w-3 h-3" />
-                                                            <span className="truncate max-w-[200px]">
-                                                                {opt.o[0].split(":")[1].trim()}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    {sortedTitles.length === 0 && titleSearch && (
-                        <div className="text-center py-12 text-gray-400">
-                            <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                            <p>No titles match "{titleSearch}"</p>
-                        </div>
-                    )}
+                <div className="rounded-xl bg-gray-50 px-4 py-3 text-center">
+                  <p className="text-[11px] uppercase tracking-wide font-semibold text-gray-500">Unique Roles</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{companyStats?.uniqueRoles.toLocaleString()}</p>
                 </div>
+              </div>
             </div>
-        )}
-    </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+              <div className="relative">
+                <div className="relative flex items-center bg-white rounded-xl border border-[var(--border-subtle)] shadow-sm focus-within:ring-2 focus-within:ring-[var(--brand-primary)] transition-all overflow-hidden">
+                  <Search className="w-5 h-5 text-gray-400 ml-4 shrink-0" />
+                  <input
+                    type="text"
+                    value={titleSearch}
+                    onChange={(e) => setTitleSearch(e.target.value)}
+                    placeholder="Filter role titles..."
+                    className="w-full py-3 px-3 bg-transparent border-0 outline-none focus:ring-0 font-medium text-gray-900 transition-all placeholder:text-gray-400"
+                  />
+                  {titleSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setTitleSearch("")}
+                      className="mr-3 p-1.5 text-gray-400 hover:text-gray-700 rounded-full"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] px-3 py-2.5 bg-white">
+                <SlidersHorizontal className="w-4 h-4 text-gray-500" />
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as SortMode)}
+                  className="text-sm font-medium bg-transparent outline-none"
+                  aria-label="Sort titles"
+                >
+                  <option value="filings">Sort: Highest filings</option>
+                  <option value="alphabetical">Sort: Alphabetical</option>
+                </select>
+              </div>
+
+              <p className="text-sm text-gray-500 justify-self-end">
+                {preparedTitles.length.toLocaleString()} role{preparedTitles.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3" aria-live="polite">
+            {visibleTitles.map((item, index) => {
+              const isExpanded = expandedJob === item.title;
+              return (
+                <div
+                  key={item.title}
+                  className={`rounded-xl border transition-all duration-300 ${
+                    isExpanded
+                      ? "border-blue-200 bg-white shadow-md"
+                      : "border-[var(--border-subtle)] bg-gray-50/45 hover:bg-white hover:shadow-sm"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExpandedJob(isExpanded ? null : item.title)}
+                    className="w-full p-4 sm:p-5 text-left group outline-none"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500">
+                          <Briefcase className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 text-base sm:text-lg leading-tight">{item.title}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Most commonly mapped to: {formatSocCode(item.primaryOption.s)} ({item.dominancePct.toFixed(0)}% of filings)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-700">
+                          {item.totalFilings.toLocaleString()} filings
+                        </span>
+                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isExpanded ? "rotate-180 text-[var(--brand-primary)]" : ""}`} />
+                      </div>
+                    </div>
+                  </button>
+
+                  <div
+                    className={`transition-all duration-300 overflow-hidden ${isExpanded ? "max-h-[900px] opacity-100" : "max-h-0 opacity-0"}`}
+                  >
+                    <div className="ml-4 sm:ml-6 mr-4 sm:mr-6 mb-4 sm:mb-5 rounded-xl bg-blue-50/45 px-3 sm:px-4 py-3 space-y-2.5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Available SOC Mappings</p>
+
+                      {item.options.map((option, optionIndex) => (
+                        <button
+                          key={`${item.title}-${option.s}-${optionIndex}`}
+                          type="button"
+                          onClick={() => goToWageMap(option)}
+                          className="w-full rounded-lg bg-white px-3.5 py-3 text-left border border-blue-100 hover:border-blue-300 transition-all duration-200 flex items-center justify-between gap-3"
+                          style={{
+                            animationDelay: `${index * 30 + optionIndex * 25}ms`,
+                          }}
+                        >
+                          <div>
+                            <div className="inline-flex items-center gap-2 mb-1.5">
+                              <span className="bg-blue-600 text-white font-mono font-bold text-xs px-2.5 py-1 rounded-full">
+                                SOC {formatSocCode(option.s)}
+                              </span>
+                              <span className="text-xs text-gray-500 font-semibold">
+                                {option.n.toLocaleString()} filings
+                              </span>
+                            </div>
+                            <p className="text-sm sm:text-base font-semibold text-gray-900">{option.t}</p>
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mr-1">Filed in</span>
+                              {sortYearsDesc(option.y).map((year) => (
+                                <span
+                                  key={`${option.s}-${option.t}-${year}`}
+                                  className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800"
+                                >
+                                  {year}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          
+
+                          <span className="inline-flex items-center gap-1 text-sm font-bold text-[var(--brand-primary)] whitespace-nowrap">
+                            Open Wage Map
+                            <ArrowRight className="w-4 h-4" />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {hasMoreTitles && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + 8)}
+                  className="btn-secondary !min-h-[40px] !py-2 !px-5 text-sm"
+                >
+                  Show More Roles
+                </button>
+              </div>
+            )}
+
+            {preparedTitles.length === 0 && (
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-gray-50 px-4 py-8 text-center text-sm text-gray-600 font-medium">
+                <Search className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                No role titles match &quot;{titleSearch}&quot;.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+    </section>
   );
 }

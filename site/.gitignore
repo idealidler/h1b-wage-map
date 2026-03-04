@@ -15,6 +15,7 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+*.tsbuildinfo
 
 # --- DATA PIPELINE (HEAVY FILES) ---
 # Ignore the folder where you keep the 2GB of Excel files
