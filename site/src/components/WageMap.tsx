@@ -4,13 +4,23 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl, MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import bbox from "@turf/bbox"; 
-import { ChevronDown, MapPin, Loader2, AlertCircle, ExternalLink, CheckCircle2 } from "lucide-react";
+import { ChevronDown, MapPin, Loader2, AlertCircle, ExternalLink, CheckCircle2, TrendingUp } from "lucide-react";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
 const FR_RULE_URL =
   "https://www.federalregister.gov/documents/2025/12/29/2025-23853/weighted-selection-process-for-registrants-and-petitioners-seeking-to-file-cap-subject-h-1b";
 const DOL_WAGE_URL = "https://www.flcdatacenter.com/";
+
+// Synchronized with our global.css tokens for Mapbox Canvas injection
+const COLORS = {
+  L4: "#10b981", // var(--brand-success)
+  L3: "#2563eb", // var(--brand-primary)
+  L2: "#f59e0b", // var(--brand-accent)
+  L1: "#ef4444", // var(--brand-warning)
+  NONE: "#f8fafc", // var(--background-alt)
+};
 
 let cachedGeoJson: GeoJSON.FeatureCollection | null = null;
 
@@ -29,6 +39,7 @@ interface ActivePopupData {
 interface NextLevelInfo {
   diff: number;
   next: string;
+  nextOdds: string;
 }
 
 export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: string; jobTitle: string; userSalary: number; }) {
@@ -93,15 +104,15 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
         (!Number.isNaN(fipsId) ? wageMapData[String(fipsId).padStart(5, "0")] : undefined);
 
       const newProps = { ...(feature.properties || {}) } as Partial<WageFeatureProperties>;
-      let color = "#F8F9FA"; // Light gray for no data
+      let color = COLORS.NONE; 
       let userLevel = 0;
 
       if (countyWages) {
           Object.assign(newProps, countyWages);
-          if (debouncedSalary >= countyWages.l4) { color = "#10B981"; userLevel = 4; } // brand-success
-          else if (debouncedSalary >= countyWages.l3) { color = "#4285F4"; userLevel = 3; } // brand-primary
-          else if (debouncedSalary >= countyWages.l2) { color = "#FBBC04"; userLevel = 2; } // brand-accent
-          else if (debouncedSalary >= countyWages.l1) { color = "#EA4335"; userLevel = 1; } // brand-warning
+          if (debouncedSalary >= countyWages.l4) { color = COLORS.L4; userLevel = 4; }
+          else if (debouncedSalary >= countyWages.l3) { color = COLORS.L3; userLevel = 3; }
+          else if (debouncedSalary >= countyWages.l2) { color = COLORS.L2; userLevel = 2; }
+          else if (debouncedSalary >= countyWages.l1) { color = COLORS.L1; userLevel = 1; }
           newProps.userLevel = userLevel;
       }
       
@@ -154,10 +165,10 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   const getNextLevelInfo = (props: WageFeatureProperties | undefined): NextLevelInfo | null => {
       if (!props) return null;
       const current = props.userLevel;
-      if (current === 0) return { diff: props.l1 - debouncedSalary, next: "Level 1" };
-      if (current === 1) return { diff: props.l2 - debouncedSalary, next: "Level 2" };
-      if (current === 2) return { diff: props.l3 - debouncedSalary, next: "Level 3" };
-      if (current === 3) return { diff: props.l4 - debouncedSalary, next: "Level 4" };
+      if (current === 0) return { diff: props.l1 - debouncedSalary, next: "Level 1", nextOdds: "~15%" };
+      if (current === 1) return { diff: props.l2 - debouncedSalary, next: "Level 2", nextOdds: "~30%" };
+      if (current === 2) return { diff: props.l3 - debouncedSalary, next: "Level 3", nextOdds: "~46%" };
+      if (current === 3) return { diff: props.l4 - debouncedSalary, next: "Level 4", nextOdds: "~61%" };
       return null; 
   };
 
@@ -165,16 +176,17 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   const gapInfo = activePopup ? getNextLevelInfo(activePopup.properties) : null;
 
   return (
-    <div className="flex flex-col gap-1.5 h-full">
+    <div className="flex flex-col gap-2 h-full">
 
-      <div className="bg-white rounded-t-lg border-b border-[var(--border-subtle)] p-4 flex flex-col md:flex-row items-center justify-between gap-4 z-10 relative">
+      {/* Top Control Bar */}
+      <div className="bg-white rounded-2xl border border-[var(--border-subtle)] p-4 flex flex-col md:flex-row items-center justify-between gap-4 z-10 relative shadow-sm">
           <div className="flex items-center gap-3 w-full md:w-auto">
-               <div className="bg-blue-50 p-2 rounded-lg hidden sm:block">
-                  <MapPin className="w-5 h-5 text-[var(--brand-primary)]" />
+               <div className="bg-[var(--surface-muted)] p-2.5 rounded-xl hidden sm:block border border-[var(--border-subtle)]">
+                  <MapPin className="w-5 h-5 text-[var(--foreground-muted)]" />
                </div>
                <div>
-                  <h2 className="text-sm font-bold text-gray-900 leading-tight">Zoom to location</h2>
-                  <p className="text-xs text-gray-500 font-medium">Find specific county data</p>
+                  <h2 className="text-[15px] font-bold text-[var(--foreground)] leading-tight">Explore Regions</h2>
+                  <p className="text-xs text-[var(--foreground-muted)] font-medium">Zoom to a specific state or county</p>
                </div>
           </div>
 
@@ -185,12 +197,12 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                     value={selectedState}
                     disabled={status !== "ready"}
                     onChange={(e) => { setSelectedState(e.target.value); setSelectedCountyFips(""); if(e.target.value) handleJumpToState(e.target.value); }}
-                    className="appearance-none bg-white border border-[var(--border-subtle)] text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[var(--brand-primary)] block w-full p-2.5 pr-8 cursor-pointer font-medium disabled:opacity-50 transition-all"
+                    className="appearance-none bg-[var(--background-alt)] border border-[var(--border-subtle)] text-[var(--foreground)] text-sm rounded-xl focus:bg-white focus:ring-4 focus:ring-[var(--ring-subtle)] focus:border-[var(--brand-primary)] block w-full p-3 pr-8 cursor-pointer font-medium disabled:opacity-50 transition-all outline-none"
                   >
                       <option value="">Select State</option>
                       {locationList.map((loc) => (<option key={loc.state} value={loc.state}>{loc.state}</option>))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-[var(--foreground-muted)] pointer-events-none" />
               </div>
               <div className="relative group w-full md:w-56">
                   <select
@@ -198,49 +210,67 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                     value={selectedCountyFips}
                     disabled={!selectedState || status !== "ready"}
                     onChange={(e) => { setSelectedCountyFips(e.target.value); if(e.target.value) handleJumpToCounty(e.target.value); }}
-                    className="appearance-none bg-white border border-[var(--border-subtle)] text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[var(--brand-primary)] block w-full p-2.5 pr-8 cursor-pointer font-medium disabled:opacity-50 transition-all"
+                    className="appearance-none bg-[var(--background-alt)] border border-[var(--border-subtle)] text-[var(--foreground)] text-sm rounded-xl focus:bg-white focus:ring-4 focus:ring-[var(--ring-subtle)] focus:border-[var(--brand-primary)] block w-full p-3 pr-8 cursor-pointer font-medium disabled:opacity-50 transition-all outline-none"
                   >
                       <option value="">Select County</option>
                       {selectedState && locationList.find(l => l.state === selectedState)?.counties.map((c) => (<option key={c.fips} value={c.fips}>{c.name}</option>))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-[var(--foreground-muted)] pointer-events-none" />
               </div>
           </div>
       </div>
 
-      <div className="h-[500px] md:h-[650px] w-full rounded-b-lg overflow-hidden relative bg-gray-100">
-        {!TOKEN && (<div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-50"><AlertCircle className="w-10 h-10 text-[var(--brand-warning)] mb-2" /><p className="text-gray-900 font-bold">Missing Mapbox Token</p></div>)}
-        {status === "loading" && (<div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-40 backdrop-blur-sm"><Loader2 className="w-8 h-8 text-[var(--brand-primary)] animate-spin mb-2" /><span className="text-sm font-bold text-gray-700">Loading county wage map...</span></div>)}
+      {/* Map Container */}
+      <div className="h-[500px] md:h-[650px] w-full rounded-2xl overflow-hidden relative bg-[var(--background-alt)] border border-[var(--border-subtle)] shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+        {!TOKEN && (<div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-50"><AlertCircle className="w-10 h-10 text-[var(--brand-warning)] mb-3" /><p className="text-[var(--foreground)] font-bold text-lg">Missing Mapbox Token</p></div>)}
+        {status === "loading" && (<div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-40 backdrop-blur-md"><Loader2 className="w-8 h-8 text-[var(--brand-primary)] animate-spin mb-3" /><span className="text-sm font-bold text-[var(--foreground)] tracking-wide">Loading prevailing wage data...</span></div>)}
         {status === "error" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-40 px-4 text-center">
-            <AlertCircle className="w-10 h-10 text-[var(--brand-accent)] mb-2" />
-            <p className="text-gray-900 font-bold">No wage data found for this SOC code</p>
-            <p className="text-sm text-gray-600 mt-1">Try selecting a broader role title or choose a nearby SOC option.</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-40 px-4 text-center backdrop-blur-md">
+            <AlertCircle className="w-12 h-12 text-[var(--brand-accent)] mb-3" />
+            <p className="text-[var(--foreground)] font-bold text-lg">No wage data found</p>
+            <p className="text-sm text-[var(--foreground-muted)] mt-1.5 max-w-sm">Try selecting a broader role title or choose a nearby SOC option from the list.</p>
           </div>
         )}
 
-        {status === "ready" && (
-          <div className="absolute top-3 left-3 z-10 rounded-lg border border-[var(--border-subtle)] bg-white/95 px-3 py-2 text-xs text-gray-700 shadow-sm">
-            <div className="font-semibold text-gray-900">Source Links</div>
-            <div className="mt-1 flex flex-col gap-1">
-              <a href={FR_RULE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline">
-                FY2027 DHS Rule <ExternalLink className="w-3 h-3" />
-              </a>
-              <a href={DOL_WAGE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline">
-                DOL FLC Data Center <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          </div>
-        )}
 
+        {/* Re-designed Probability Legend */}
         {status === "ready" && (
-          <div className="absolute bottom-6 left-2 md:left-4 z-10 bg-white/95 backdrop-blur shadow-sm rounded-lg border border-[var(--border-subtle)] p-3 w-56">
-              <h4 className="text-xs font-bold text-gray-900 mb-2">Weighted Entry Guide</h4>
-              <div className="space-y-2">
-                  <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[var(--brand-success)]"></span><span className="text-xs font-medium text-gray-700">L4</span></div><span className="text-[11px] font-semibold text-gray-600">4 entries • ~61%</span></div>
-                  <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[var(--brand-primary)]"></span><span className="text-xs font-medium text-gray-700">L3</span></div><span className="text-[11px] font-semibold text-gray-600">3 entries • ~46%</span></div>
-                  <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[var(--brand-accent)]"></span><span className="text-xs font-medium text-gray-700">L2</span></div><span className="text-[11px] font-semibold text-gray-600">2 entries • ~30%</span></div>
-                  <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[var(--brand-warning)]"></span><span className="text-xs font-medium text-gray-700">L1</span></div><span className="text-[11px] font-semibold text-gray-600">1 entry • ~15%</span></div>
+          <div className="absolute bottom-6 left-4 z-10 bg-white/95 backdrop-blur-xl shadow-lg rounded-2xl border border-[var(--border-subtle)] p-4 w-64">
+              <h4 className="text-[13px] font-bold text-[var(--foreground)] mb-1">Estimated Selection Odds</h4>
+              
+              
+              <div className="space-y-2.5">
+                  <div className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-success)] shadow-sm"></span>
+                      <span className="text-[13px] font-bold text-[var(--foreground)]">L4 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">4x Entries</span></span>
+                    </div>
+                    <span className="text-[12px] font-bold text-[var(--brand-success)]">~61%</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-primary)] shadow-sm"></span>
+                      <span className="text-[13px] font-bold text-[var(--foreground)]">L3 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">3x Entries</span></span>
+                    </div>
+                    <span className="text-[12px] font-bold text-[var(--brand-primary)]">~46%</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-accent)] shadow-sm"></span>
+                      <span className="text-[13px] font-bold text-[var(--foreground)]">L2 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">2x Entries</span></span>
+                    </div>
+                    <span className="text-[12px] font-bold text-[var(--brand-accent)]">~30%</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-warning)] shadow-sm"></span>
+                      <span className="text-[13px] font-bold text-[var(--foreground)]">L1 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">1x Entry</span></span>
+                    </div>
+                    <span className="text-[12px] font-bold text-[var(--brand-warning)]">~15%</span>
+                  </div>
               </div>
           </div>
         )}
@@ -274,36 +304,62 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             <NavigationControl position="top-right" showCompass={false} />
 
             <Source id="county-wage-source" type="geojson" data={(mergedData as any) || { type: "FeatureCollection", features: [] }}>
-                <Layer id="county-fill" type="fill" paint={{ "fill-color": ["get", "calculatedColor"], "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.8] }} /> 
-                <Layer id="county-outline" type="line" paint={{ "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.5 }} />
-                <Layer id="county-label" type="symbol" minzoom={5.5} layout={{ "text-field": ["get", "c"], "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"], "text-size": 11, "text-anchor": "center", "text-max-width": 6 }} paint={{ "text-color": "#202124", "text-halo-color": "#ffffff", "text-halo-width": 2 }} />
+                <Layer id="county-fill" type="fill" paint={{ "fill-color": ["get", "calculatedColor"], "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.85] }} /> 
+                <Layer id="county-outline" type="line" paint={{ "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.3 }} />
+                <Layer id="county-label" type="symbol" minzoom={5.5} layout={{ "text-field": ["get", "c"], "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"], "text-size": 11, "text-anchor": "center", "text-max-width": 6 }} paint={{ "text-color": "#0f172a", "text-halo-color": "#ffffff", "text-halo-width": 2 }} />
             </Source>
 
+            {/* Premium Data Popup */}
             {activePopup && (
-                <Popup longitude={activePopup.longitude} latitude={activePopup.latitude} offset={15} closeButton={!!selectedInfo} closeOnClick={false} onClose={() => setSelectedInfo(null)} className="z-50" maxWidth="340px">
-                    <div className="p-1 font-sans">
-                        <div className="mb-3">
-                            <h3 className="font-bold text-gray-900 text-lg leading-tight">{activePopup.properties.c}</h3>
-                            <div className="flex items-center justify-between mt-1.5">
-                                <span className="text-xs font-medium text-gray-500">{activePopup.properties.s}</span>
-                                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-700 font-mono font-bold">Base Pay: ${debouncedSalary.toLocaleString()}</span>
+                <Popup 
+                  longitude={activePopup.longitude} 
+                  latitude={activePopup.latitude} 
+                  offset={15} 
+                  closeButton={false} 
+                  closeOnClick={false} 
+                  className="z-50 !rounded-2xl overflow-hidden" 
+                  maxWidth="360px"
+                >
+                    <div className="p-2 font-sans bg-white">
+                        <div className="mb-4">
+                            <h3 className="font-bold text-[var(--foreground)] text-[17px] leading-tight">{activePopup.properties.c}</h3>
+                            <div className="flex items-center justify-between mt-1">
+                                <span className="text-[13px] font-medium text-[var(--foreground-muted)]">{activePopup.properties.s}</span>
+                                <span className="text-[11px] bg-[var(--surface-muted)] px-2.5 py-1 rounded-md text-[var(--foreground)] font-mono font-bold border border-[var(--border-subtle)]">
+                                  Base: ${debouncedSalary.toLocaleString()}
+                                </span>
                             </div>
                         </div>
 
-                        
-
-                        <div className="mt-3 space-y-1.5">
+                        <div className="space-y-1.5">
                             <LevelRow level={4} amount={activePopup.properties.l4} activeLevel={activePopup.properties.userLevel} tone="success" />
                             <LevelRow level={3} amount={activePopup.properties.l3} activeLevel={activePopup.properties.userLevel} tone="primary" />
                             <LevelRow level={2} amount={activePopup.properties.l2} activeLevel={activePopup.properties.userLevel} tone="accent" />
                             <LevelRow level={1} amount={activePopup.properties.l1} activeLevel={activePopup.properties.userLevel} tone="warning" />
                         </div>
 
-                        {gapInfo && (
-                            <p className="mt-3 text-xs text-gray-700">
-                                To reach {gapInfo.next}, increase base pay by <span className="font-semibold">${gapInfo.diff.toLocaleString()}</span>.
-                            </p>
-                        )}
+                        {/* Actionable Gap Analysis */}
+                        <AnimatePresence>
+                          {gapInfo && (
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                className="mt-3.5 pt-3 border-t border-[var(--border-subtle)]"
+                              >
+                                  <div className="flex items-start gap-2.5 bg-[var(--surface-muted)] p-3 rounded-xl border border-[var(--border-subtle)]">
+                                    <TrendingUp className="w-4 h-4 text-[var(--brand-primary)] shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="text-[12px] text-[var(--foreground)] font-medium leading-snug">
+                                          A <span className="font-bold text-[var(--foreground)]">${gapInfo.diff.toLocaleString()}</span> bump reaches <span className="font-bold">{gapInfo.next}</span>.
+                                      </p>
+                                      <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                                          This increases selection odds to <span className="font-bold text-[var(--foreground)]">{gapInfo.nextOdds}</span>.
+                                      </p>
+                                    </div>
+                                  </div>
+                              </motion.div>
+                          )}
+                        </AnimatePresence>
                     </div>
                 </Popup>
             )}
@@ -325,38 +381,42 @@ function LevelRow({
   tone: "success" | "primary" | "accent" | "warning";
 }) {
   const isActive = activeLevel === level;
+  const isLower = activeLevel < level && activeLevel !== 0;
 
-  const toneClasses = {
-    success: "border-[var(--brand-success)] bg-emerald-50",
-    primary: "border-[var(--brand-primary)] bg-blue-50",
-    accent: "border-[var(--brand-accent)] bg-amber-50",
-    warning: "border-[var(--brand-warning)] bg-red-50",
+  // We map the tones directly to our CSS variables for consistent theming
+  const activeClasses = {
+    success: "border-[var(--brand-success)] bg-emerald-50/50",
+    primary: "border-[var(--brand-primary)] bg-[var(--brand-primary-muted)]",
+    accent: "border-[var(--brand-accent)] bg-amber-50/50",
+    warning: "border-[var(--brand-warning)] bg-red-50/50",
   };
 
   const badgeClasses = {
-    success: "bg-[var(--brand-success)] text-white",
-    primary: "bg-[var(--brand-primary)] text-white",
-    accent: "bg-[var(--brand-accent)] text-gray-900",
-    warning: "bg-[var(--brand-warning)] text-white",
+    success: "bg-[var(--brand-success)] text-white shadow-sm",
+    primary: "bg-[var(--brand-primary)] text-white shadow-sm",
+    accent: "bg-[var(--brand-accent)] text-white shadow-sm",
+    warning: "bg-[var(--brand-warning)] text-white shadow-sm",
   };
 
   return (
     <div
-      className={`rounded-lg border px-3 py-2.5 transition-all ${
-        isActive ? `${toneClasses[tone]} shadow-sm ring-1 ring-offset-0 ${toneClasses[tone]}` : "border-gray-100 bg-gray-50"
-      }`}
+      className={`rounded-xl border px-3 py-2.5 transition-all duration-200 ${
+        isActive 
+          ? `${activeClasses[tone]} ring-1 ring-[var(--border-subtle)] shadow-sm scale-[1.02] my-2` 
+          : "border-transparent bg-[var(--background-alt)]"
+      } ${isLower ? "opacity-60 grayscale-[50%]" : ""}`}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center justify-center min-w-8 h-6 px-2 rounded-md text-xs font-bold ${isActive ? badgeClasses[tone] : "bg-white text-gray-600 border border-gray-200"}`}>
+        <div className="flex items-center gap-2.5">
+          <span className={`inline-flex items-center justify-center min-w-8 h-6 px-2 rounded-md text-[11px] font-bold ${isActive ? badgeClasses[tone] : "bg-white text-[var(--foreground-muted)] border border-[var(--border-subtle)]"}`}>
             L{level}
           </span>
-          <span className={`text-xs font-semibold ${isActive ? "text-gray-900" : "text-gray-500"}`}>
+          <span className={`text-[13px] font-bold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>
             Level {level}
           </span>
-          {isActive && <CheckCircle2 className="w-4 h-4 text-emerald-600" aria-hidden="true" />}
+          {isActive && <CheckCircle2 className={`w-4 h-4 ${tone === 'success' ? 'text-[var(--brand-success)]' : tone === 'primary' ? 'text-[var(--brand-primary)]' : tone === 'accent' ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-warning)]'}`} aria-hidden="true" />}
         </div>
-        <span className={`text-sm font-semibold ${isActive ? "text-gray-900" : "text-gray-700"}`}>
+        <span className={`text-[13px] font-mono font-bold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>
           ${amount.toLocaleString()}
         </span>
       </div>

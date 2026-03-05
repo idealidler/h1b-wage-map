@@ -7,6 +7,7 @@ import {
   ArrowRight, AlertCircle, Loader2,
   CheckCircle2, Info, SearchX, RotateCcw
 } from "lucide-react";
+import { motion, AnimatePresence , Variants} from "framer-motion";
 
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
@@ -34,6 +35,20 @@ const LOADING_MESSAGES = [
 function formatSocCode(code: string): string {
     return code.includes('.') ? code : `${code}.00`;
 }
+
+// Animation variants for staggered list reveals
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 export default function FindSocPage() {
   const router = useRouter();
@@ -133,43 +148,57 @@ export default function FindSocPage() {
     <main className="min-h-screen bg-[var(--background-alt)] flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full flex-grow flex flex-col gap-5">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full flex-grow flex flex-col gap-6">
         
-        <header className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 shadow-sm space-y-5">
+        {/* Page Header */}
+        <header className="rounded-2xl border border-[var(--border-subtle)] bg-white p-6 sm:p-8 shadow-[0_2px_12px_rgba(15,23,42,0.03)] space-y-4">
             <div className="space-y-3 text-center">
-                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+                <h1 className="text-3xl sm:text-4xl font-bold text-[var(--foreground)] tracking-tight">
                     Find Your SOC Code with AI
                 </h1>
-                <p className="text-gray-600 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed">
-                    Describe your role to get official SOC code options, then jump directly to the H-1B county wage map.
+                <p className="text-[var(--foreground-muted)] text-base sm:text-lg max-w-3xl mx-auto font-medium">
+                    Describe your role to get official SOC code options, then jump directly to the H-1B county wage map to check your odds.
                 </p>
             </div>
         </header>
 
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 w-full min-h-[420px]">
+        {/* Interactive Workspace */}
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 w-full min-h-[460px] shadow-[0_4px_20px_rgba(15,23,42,0.03)] relative overflow-hidden">
+          
+          <AnimatePresence mode="wait">
+            
+            {/* 1. INPUT STATE */}
             {!loading && results.length === 0 && !hasSearched && (
-                <div id="ai-panel" role="tabpanel" className="w-full space-y-6 animate-in fade-in duration-300">
-                    <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--brand-primary)] transition-all flex flex-col bg-white">
-                            <div className="px-6 py-4 bg-white border-b border-[var(--border-subtle)] flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 text-[var(--brand-primary)]" />
-                                    <span className="text-sm font-semibold text-gray-900">AI SOC Matcher for H-1B roles</span>
+                <motion.div 
+                  key="input-state"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+                  className="w-full space-y-6"
+                >
+                    <div className="rounded-2xl border border-[var(--border-subtle)] overflow-hidden focus-within:ring-4 focus-within:ring-[var(--ring-subtle)] focus-within:border-[var(--brand-primary)] transition-all duration-300 flex flex-col bg-white shadow-sm">
+                            <div className="px-6 py-4 bg-[var(--background-alt)] border-b border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="bg-[var(--brand-primary-muted)] p-1.5 rounded-lg">
+                                      <Sparkles className="w-4 h-4 text-[var(--brand-primary)]" />
+                                    </div>
+                                    <span className="text-[15px] font-bold text-[var(--foreground)]">AI SOC Matcher for H-1B</span>
                                 </div>
-                                <span className="text-xs font-medium text-gray-500">Include tasks, tools, and seniority for better accuracy</span>
+                                <span className="text-[11px] font-bold text-[var(--foreground-muted)] uppercase tracking-widest">Include tasks, tools & seniority</span>
                             </div>
 
                             <textarea 
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                className="w-full min-h-[340px] p-7 bg-white border-0 outline-none focus:ring-0 text-gray-900 text-lg leading-8 placeholder:text-gray-400 resize-none"
+                                className="w-full min-h-[280px] p-6 bg-white border-0 outline-none focus:ring-0 text-[var(--foreground)] text-lg leading-relaxed placeholder:text-slate-300 resize-none font-medium"
                                 placeholder="Example: I build backend APIs using Python and AWS, design database schemas, review pull requests, and mentor two junior engineers."
                                 autoFocus
                             />
                             
-                            <div className="bg-gray-50 px-6 py-4 border-t border-[var(--border-subtle)] space-y-4">
-                                <div className="space-y-1">
-                                    <label htmlFor="tech-stack-input" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                            <div className="bg-[var(--background-alt)] px-6 py-5 border-t border-[var(--border-subtle)] space-y-5">
+                                <div className="space-y-2">
+                                    <label htmlFor="tech-stack-input" className="text-[11px] font-bold text-[var(--foreground-muted)] uppercase tracking-widest">
                                         Optional tech stack
                                     </label>
                                     <input
@@ -177,162 +206,225 @@ export default function FindSocPage() {
                                         type="text"
                                         value={techStack}
                                         onChange={(e) => setTechStack(e.target.value)}
-                                        placeholder="Example: Python, AWS, PostgreSQL, React, Tableau"
-                                        className="w-full rounded-lg border border-[var(--border-subtle)] bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                        placeholder="e.g., Python, AWS, PostgreSQL, React"
+                                        className="w-full rounded-xl border border-[var(--border-subtle)] bg-white px-4 py-3 text-sm font-medium text-[var(--foreground)] placeholder:text-slate-300 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--ring-subtle)] transition-all duration-200"
                                     />
-                                    <p className="text-xs text-gray-500">
-                                        Adding tools/frameworks improves matching against O*NET technology examples.
-                                    </p>
                                 </div>
 
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-                                        <ShieldCheck className="w-4 h-4 text-[var(--brand-success)]" /> 
-                                        Your input is secure and private
-                                    </div>
-                                    {!canAnalyze && (
-                                        <p className="text-xs text-gray-500">Add at least {minCharsRemaining} more character{minCharsRemaining === 1 ? "" : "s"} to run matching.</p>
-                                    )}
-                                </div>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+                                  <div className="space-y-1">
+                                      <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] font-semibold">
+                                          <ShieldCheck className="w-4.5 h-4.5 text-[var(--brand-success)]" /> 
+                                          Secure and private analysis
+                                      </div>
+                                      {!canAnalyze && (
+                                          <p className="text-[12px] font-medium text-[var(--brand-warning)]">Add at least {minCharsRemaining} more character{minCharsRemaining === 1 ? "" : "s"} to run matching.</p>
+                                      )}
+                                  </div>
 
-                                <button
-                                    type="button"
-                                    onClick={handleAnalyze}
-                                    disabled={!canAnalyze || loading}
-                                    className={`btn-primary !min-h-[44px] !py-2.5 !px-6 text-base ${!canAnalyze || loading ? 'opacity-50 cursor-not-allowed hover:bg-[var(--brand-primary)]' : ''}`}
-                                >
-                                    Find SOC Options
-                                </button>
+                                  <button
+                                      type="button"
+                                      onClick={handleAnalyze}
+                                      disabled={!canAnalyze || loading}
+                                      className={`btn-primary !px-8 text-base ${!canAnalyze ? 'opacity-50 grayscale-[30%] cursor-not-allowed' : 'hover:-translate-y-0.5 shadow-lg shadow-blue-900/15'}`}
+                                  >
+                                      Find SOC Options
+                                  </button>
                                 </div>
                             </div>
                     </div>
 
-                    <div className="rounded-xl border border-[var(--border-subtle)] bg-gray-50 p-4 sm:p-5">
-                        <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-5">
+                        <h3 className="text-[13px] font-bold text-[var(--foreground)] mb-2.5 flex items-center gap-2">
                           <Info className="w-4 h-4 text-[var(--brand-primary)]" />
-                          How to get better matches
+                          Tips for high-accuracy matches
                         </h3>
-                        <div className="space-y-2 text-sm text-gray-700 leading-relaxed">
-                          <p>Start with main responsibilities (3-5 sentences).</p>
-                          <p>Include seniority and ownership scope.</p>
-                          <p>Add tools/frameworks and relevant domain context.</p>
+                        <div className="space-y-2 text-[13px] font-medium text-[var(--foreground-muted)] leading-relaxed pl-6">
+                          <p className="relative before:absolute before:left:-4 before:content-['•'] before:text-[var(--brand-primary)]">Start with main responsibilities (3-5 sentences).</p>
+                          <p className="relative before:absolute before:left:-4 before:content-['•'] before:text-[var(--brand-primary)]">Include seniority and ownership scope.</p>
+                          <p className="relative before:absolute before:left:-4 before:content-['•'] before:text-[var(--brand-primary)]">Add specific tools/frameworks to match O*NET examples.</p>
                         </div>
-                        <p className="text-xs text-gray-600 mt-3">Shortcut: Press <span className="font-semibold text-gray-900">Ctrl/Cmd + Enter</span> to run analysis.</p>
                     </div>
-
-                </div>
+                </motion.div>
             )}
 
+            {/* 2. LOADING STATE */}
             {loading && (
-                <div id="ai-panel" role="tabpanel" className="max-w-3xl mx-auto w-full p-12 animate-in fade-in duration-300 flex flex-col items-center justify-center min-h-[420px]">
-                    <Loader2 className="w-10 h-10 text-[var(--brand-primary)] animate-spin mb-6" />
-                    <p className="font-bold text-gray-900 text-lg" aria-live="polite">
-                        {LOADING_MESSAGES[loadingIndex]}
-                    </p>
-                    <div className="w-56 h-1.5 rounded-full bg-blue-100 mt-5 overflow-hidden">
-                        <div className="h-full w-1/2 bg-[var(--brand-primary)] animate-pulse rounded-full" />
+                <motion.div 
+                  key="loading-state"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                  className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8"
+                >
+                    <div className="relative mb-8">
+                      <div className="absolute inset-0 bg-[var(--brand-primary)] blur-xl opacity-20 rounded-full animate-pulse"></div>
+                      <Loader2 className="w-12 h-12 text-[var(--brand-primary)] animate-spin relative z-10" />
                     </div>
-                </div>
+                    
+                    <AnimatePresence mode="wait">
+                      <motion.p 
+                        key={loadingIndex}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.3 }}
+                        className="font-bold text-[var(--foreground)] text-[17px]" 
+                        aria-live="polite"
+                      >
+                          {LOADING_MESSAGES[loadingIndex]}
+                      </motion.p>
+                    </AnimatePresence>
+
+                    <div className="w-64 h-1.5 rounded-full bg-[var(--surface-muted)] mt-6 overflow-hidden border border-[var(--border-subtle)]">
+                        <motion.div 
+                          className="h-full bg-[var(--brand-primary)] rounded-full" 
+                          initial={{ width: "0%" }}
+                          animate={{ width: "100%" }}
+                          transition={{ duration: (LOADING_MESSAGES.length * 2.2), ease: "linear" }}
+                        />
+                    </div>
+                </motion.div>
             )}
             
+            {/* 3. RESULTS STATE */}
             {!loading && results.length > 0 && (
-                 <div id="ai-panel" role="tabpanel" className="max-w-4xl mx-auto w-full animate-in fade-in duration-500 space-y-5">
-                    <div className="flex flex-col sm:flex-row items-end justify-between gap-4 border-b border-gray-200 pb-4">
-                        <div className="space-y-1">
-                            <h2 className="font-bold text-gray-900 text-2xl">Recommended SOC Codes</h2>
-                            <p className="text-sm text-gray-600">Select a match to open the wage map.</p>
+                 <motion.div 
+                  key="results-state"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="max-w-4xl mx-auto w-full space-y-6"
+                 >
+                    <div className="flex flex-col sm:flex-row items-end justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
+                        <div className="space-y-1.5">
+                            <h2 className="font-bold text-[var(--foreground)] text-2xl">Recommended Matches</h2>
+                            <p className="text-[13px] font-medium text-[var(--foreground-muted)]">Select the most accurate match to open the wage map.</p>
                         </div>
                         <button 
                             type="button"
                             onClick={() => {setResults([]); setInput(""); setTechStack(""); setHasSearched(false); setError(null);}}
-                            className="btn-secondary !py-2 !min-h-[36px] text-sm"
+                            className="btn-secondary !py-2.5 !min-h-[40px] text-sm"
                         >
                             New Search
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <motion.div 
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="show"
+                      className="grid grid-cols-1 gap-4"
+                    >
                         {results.map((job, idx) => {
                             const isTopPick = idx === 0;
                             return (
-                                <button 
+                                <motion.button 
+                                    variants={itemVariants}
                                     key={idx}
                                     onClick={() => handleSelect(job.code, job.title)}
-                                    className={`group w-full text-left bg-white p-5 sm:p-6 rounded-xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:shadow-md hover:scale-[1.01] ${isTopPick ? 'border-[var(--brand-primary)] shadow-sm bg-gradient-to-r from-blue-50/40 to-white border-l-4 border-l-[var(--brand-primary)]' : 'border-[var(--border-subtle)] hover:border-[var(--brand-primary)]'}`}
+                                    className={`group w-full text-left p-6 rounded-2xl border transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:shadow-[0_8px_30px_rgba(37,99,235,0.06)] hover:scale-[1.01] outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring-subtle)] ${
+                                      isTopPick 
+                                        ? 'border-[var(--brand-primary)] bg-[var(--brand-primary-muted)]/40 border-l-4 shadow-sm' 
+                                        : 'bg-white border-[var(--border-subtle)] hover:border-[var(--brand-primary)]'
+                                    }`}
                                 >
-                                    <div className="space-y-2 flex-1">
+                                    <div className="space-y-2.5 flex-1">
                                         <div className="flex flex-wrap items-center gap-3">
                                             {isTopPick && (
-                                                <span className="bg-blue-50 text-[var(--brand-primary)] text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                                                <span className="bg-[var(--brand-primary)] text-white shadow-sm text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5">
                                                     <CheckCircle2 className="w-3.5 h-3.5" /> Best Match
                                                 </span>
                                             )}
-                                            <span className="text-gray-500 text-sm font-mono font-bold">
+                                            <span className="text-[var(--foreground-muted)] text-[13px] font-mono font-bold bg-[var(--surface-muted)] px-2.5 py-1 rounded-md border border-[var(--border-subtle)]">
                                                 SOC {formatSocCode(job.code)}
                                             </span>
                                         </div>
-                                        <h3 className="font-bold text-gray-900 text-lg sm:text-xl">
+                                        <h3 className="font-bold text-[var(--foreground)] text-lg sm:text-xl group-hover:text-[var(--brand-primary)] transition-colors">
                                             {job.title}
                                         </h3>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Why this matches</p>
-                                        <p className="text-sm text-gray-600 leading-7">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)] pt-1">Match Reasoning</p>
+                                        <p className="text-[14px] text-[var(--foreground)] font-medium leading-relaxed">
                                             {job.match_reason}
                                         </p>
                                     </div>
-                                    <div className="shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 text-gray-400 group-hover:bg-[var(--brand-primary)] group-hover:text-white transition-all">
-                                        <ArrowRight className="w-5 h-5" />
+                                    <div className={`shrink-0 flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${
+                                      isTopPick 
+                                        ? 'bg-[var(--brand-primary)] text-white shadow-md group-hover:scale-110' 
+                                        : 'bg-[var(--surface-muted)] text-[var(--foreground-muted)] group-hover:bg-[var(--brand-primary)] group-hover:text-white group-hover:shadow-md group-hover:scale-110'
+                                    }`}>
+                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
                                     </div>
-                                </button>
+                                </motion.button>
                             )
                         })}
-                    </div>
+                    </motion.div>
 
-                    <div className="mt-6 flex items-start gap-3 p-4 rounded-lg bg-gray-50 border border-[var(--border-subtle)] text-gray-600 text-sm">
-                        <AlertTriangle className="w-5 h-5 shrink-0 text-[var(--brand-accent)]" />
+                    <motion.div 
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                      className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50/50 border border-amber-200 text-amber-800 text-[13px] font-medium shadow-sm"
+                    >
+                        <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
                         <p className="leading-relaxed">
-                            This tool estimates the closest official SOC code. Please verify your final code with your employer or legal counsel before submitting forms.
+                            This tool estimates the closest official SOC code based on your input. Always verify your final code with your employer or legal counsel before submitting immigration forms.
                         </p>
-                    </div>
-                </div>
+                    </motion.div>
+                 </motion.div>
             )}
 
+            {/* 4. NO MATCHES STATE */}
             {!loading && hasSearched && results.length === 0 && !error && (
-                <div id="ai-panel" role="tabpanel" className="max-w-3xl mx-auto w-full card-container p-8 text-center space-y-4 animate-in fade-in duration-300">
-                    <SearchX className="w-8 h-8 text-gray-400 mx-auto" />
-                    <h2 className="text-xl font-bold text-gray-900">We couldn&apos;t find a strong match yet</h2>
-                    <p className="text-gray-600 leading-relaxed">
-                        Try adding a bit more detail about your daily work, tools, and seniority level. A clearer description usually returns better matches.
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="max-w-2xl mx-auto w-full p-10 text-center space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)]"
+                >
+                    <SearchX className="w-10 h-10 text-[var(--foreground-muted)] mx-auto mb-2" />
+                    <h2 className="text-xl font-bold text-[var(--foreground)]">We couldn&apos;t find a strong match</h2>
+                    <p className="text-[var(--foreground-muted)] font-medium leading-relaxed max-w-lg mx-auto">
+                        Try adding a bit more detail about your daily work, tools, and seniority level. A clearer description usually returns better matches against O*NET data.
                     </p>
-                    <div className="pt-2">
+                    <div className="pt-4">
                         <button
                             type="button"
                             onClick={() => setHasSearched(false)}
-                            className="btn-secondary !min-h-[40px] !py-2 !px-5 text-sm"
+                            className="btn-secondary !rounded-full !px-8"
                         >
-                            Update Description
+                            Refine Description
                         </button>
                     </div>
-                </div>
+                </motion.div>
             )}
+          </AnimatePresence>
         </div>
 
-        {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-lg flex items-start justify-between gap-4 mt-4" role="alert" aria-live="polite">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <div className="text-sm font-medium">{error}</div>
-              </div>
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-700 hover:text-rose-800 whitespace-nowrap"
+        {/* ERROR NOTIFICATION */}
+        <AnimatePresence>
+          {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-800 p-4 rounded-xl flex items-center justify-between gap-4 mt-2 shadow-sm" 
+                role="alert" 
+                aria-live="polite"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Retry
-              </button>
-            </div>
-        )}
+                <div className="flex items-center gap-3">
+                  <div className="bg-white p-1.5 rounded-lg shadow-sm">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                  </div>
+                  <div className="text-[13px] font-bold">{error}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-bold text-red-700 hover:text-red-900 bg-white px-3 py-1.5 rounded-lg border border-red-200 shadow-sm hover:shadow-md transition-all whitespace-nowrap"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Retry
+                </button>
+              </motion.div>
+          )}
+        </AnimatePresence>
 
       </div>
 

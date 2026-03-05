@@ -9,12 +9,12 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.wagelevelh1b.com"),
   title: {
-    default: "H-1B Wage Map FY 2027 | Prevailing Wage Levels by County",
+    default: "H-1B Wage Level Map FY 2027 | Prevailing Wages by County",
     template: "%s | H1B Wage Map",
   },
 
   description:
-    "Interactive H-1B wage map using official U.S. Department of Labor data. Find SOC codes, compare wage levels (L1-L4), and check county-level prevailing wages for FY 2027.",
+    "Interactive H-1B wage level map using official U.S. Department of Labor data. Find SOC codes, compare prevailing wage levels (L1-L4), and check county data for FY 2027.",
 
   alternates: {
     canonical: "/",
@@ -22,8 +22,11 @@ export const metadata: Metadata = {
 
   keywords: [
     "H1B wage map",
+    "H1B wage level map",
+    "wage map H1B",
+    "wagemap H1B",
+    "H1B map",
     "H-1B prevailing wage",
-    "H1B wage level",
     "SOC code finder",
     "LCA employer filings",
     "FY 2027 H1B",
@@ -31,7 +34,7 @@ export const metadata: Metadata = {
   ],
 
   openGraph: {
-    title: "H-1B Wage Map FY 2027",
+    title: "H-1B Wage Level Map FY 2027",
     description:
       "Find SOC codes and explore county-level prevailing wage levels (L1-L4) with official Department of Labor data.",
     url: "https://www.wagelevelh1b.com",
@@ -43,14 +46,14 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "H1B Wage Map Preview",
+        alt: "H-1B Wage Level Map Preview",
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "H-1B Wage Map FY 2027",
+    title: "H-1B Wage Level Map FY 2027",
     description:
       "Explore official county-level prevailing wages, find SOC codes, and compare wage levels.",
   },
@@ -80,6 +83,7 @@ export default function RootLayout({
       {
         "@type": "WebSite",
         name: "H1B Wage Map",
+        alternateName: ["H1B Wage Level Map", "WageMap H1B"],
         url: "https://www.wagelevelh1b.com",
         potentialAction: {
           "@type": "SearchAction",
@@ -89,7 +93,7 @@ export default function RootLayout({
       },
       {
         "@type": "SoftwareApplication",
-        name: "H1B Wage Map FY 2027",
+        name: "H1B Wage Level Map FY 2027",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         offers: {
@@ -98,7 +102,7 @@ export default function RootLayout({
           priceCurrency: "USD",
         },
         description:
-          "A tool to explore H-1B prevailing wage levels by county, find SOC codes, and review FY 2027 rule references using official Department of Labor data.",
+          "An interactive tool to explore H-1B prevailing wage levels by county, find SOC codes, and review FY 2027 rule references using official Department of Labor data.",
         author: {
           "@type": "Person",
           name: "Akshay Jain",
