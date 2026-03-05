@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, KeyboardEvent } from "react";
 import { Search, X, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Job { code: string; base_soc: string; title: string; }
 
@@ -73,7 +74,6 @@ export default function JobSearch({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // FIXED: Hitting Enter now auto-selects the first result!
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) return;
     if (e.key === "ArrowDown") {
@@ -93,7 +93,7 @@ export default function JobSearch({
 
   useEffect(() => {
     if (activeIndex >= 0 && listRef.current) {
-      const activeEl = listRef.current.children[activeIndex] as HTMLElement;
+      const activeEl = listRef.current.children[activeIndex + 1] as HTMLElement;
       if (activeEl) activeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }, [activeIndex]);
@@ -107,11 +107,11 @@ export default function JobSearch({
 
   return (
     <div className="relative w-full z-[100]" ref={wrapperRef}>
-      <div className="relative">
+      <div className="relative group">
         {isLoading ? (
-          <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--brand-primary)] animate-spin" />
+          <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--foreground-muted)] animate-spin" />
         ) : (
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--foreground-muted)] group-focus-within:text-[var(--brand-primary)] transition-colors duration-200" />
         )}
         <input
           id={inputId}
@@ -121,60 +121,78 @@ export default function JobSearch({
           aria-controls={listboxId}
           aria-autocomplete="list"
           aria-describedby={ariaDescribedBy}
-          placeholder="Search by role or SOC code (e.g. Software Developers or 15-1252)"
-          className="w-full pl-12 pr-11 py-3.5 min-h-[48px] border border-[var(--border-subtle)] rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] focus:outline-none text-[15px] text-gray-900 transition-all font-medium placeholder:text-gray-400"
-          value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => { if (filtered.length > 0) setIsOpen(true); }}
+          placeholder="Search by role or SOC code (e.g. Software Developers)"
+          className="w-full pl-12 pr-11 py-3.5 min-h-[52px] border border-[var(--border-subtle)] rounded-2xl bg-white shadow-sm focus:ring-4 focus:ring-[var(--ring-subtle)] focus:border-[var(--brand-primary)] focus:outline-none text-[15px] text-[var(--foreground)] transition-all duration-300 font-medium placeholder:text-[var(--foreground-muted)]"
+          value={query} 
+          onChange={(e) => setQuery(e.target.value)} 
+          onKeyDown={handleKeyDown} 
+          onFocus={() => { if (filtered.length > 0) setIsOpen(true); }}
         />
         {query.length > 0 && !isLoading && (
             <button
               aria-label="Clear search"
               onClick={() => { setQuery(""); setIsOpen(false); onSelect("", ""); setActiveIndex(-1); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors rounded-md p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] transition-all duration-200 rounded-full p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
             >
                 <X className="h-4 w-4" />
             </button>
         )}
       </div>
 
-      {isOpen && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          ref={listRef}
-          className="absolute w-full bg-white mt-2 border border-[var(--border-subtle)] rounded-xl shadow-xl max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 z-[100]"
-        >
-          {filtered.length > 0 ? (
-            <>
-              <li className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 bg-gray-50/70">
-                Top matches
-              </li>
-              {filtered.map((job, idx) => {
-                const formattedCode = job.code.includes('.') ? job.code : `${job.code}.00`;
-                return (
-                  <li
-                    key={`${job.code}-${idx}`}
-                    role="option"
-                    aria-selected={idx === activeIndex}
-                    className={`px-4 py-3.5 cursor-pointer border-b border-gray-50 last:border-0 transition-colors ${idx === activeIndex ? "bg-blue-50 text-blue-900" : "hover:bg-blue-50/70 text-gray-700"}`}
-                    onClick={() => handleSelect(job)}
-                  >
-                    <div className="flex justify-between items-center gap-4">
-                      <span className="font-semibold text-[15px] text-gray-900">{job.title}</span>
-                      <div className="text-xs text-[var(--brand-primary)] font-mono font-semibold text-right min-w-[72px] bg-blue-50 border border-blue-100 px-2 py-1 rounded-md">
+      <AnimatePresence>
+        {isOpen && (
+          <motion.ul
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.15 } }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            id={listboxId}
+            role="listbox"
+            ref={listRef}
+            className="absolute w-full mt-2 bg-white/95 backdrop-blur-xl border border-[var(--border-subtle)] rounded-2xl shadow-lg max-h-[320px] overflow-y-auto z-[100] p-1.5 flex flex-col gap-0.5"
+          >
+            {filtered.length > 0 ? (
+              <>
+                <li className="px-3 pt-2 pb-1.5 text-[10px] font-bold text-[var(--foreground-muted)] uppercase tracking-widest ml-1">
+                  Top matches
+                </li>
+                {filtered.map((job, idx) => {
+                  const formattedCode = job.code.includes('.') ? job.code : `${job.code}.00`;
+                  const isActive = idx === activeIndex;
+
+                  return (
+                    <li
+                      key={`${job.code}-${idx}`}
+                      role="option"
+                      aria-selected={isActive}
+                      className={`px-3 py-3 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center gap-4 ${
+                        isActive 
+                          ? "bg-[var(--brand-primary-muted)] text-[var(--brand-primary)]" 
+                          : "hover:bg-[var(--surface-muted)] text-[var(--foreground)]"
+                      }`}
+                      onClick={() => handleSelect(job)}
+                      onMouseEnter={() => setActiveIndex(idx)}
+                    >
+                      <span className="font-semibold text-[14px] truncate">{job.title}</span>
+                      <div className={`text-xs font-mono font-bold text-right min-w-[72px] px-2 py-1 rounded-md transition-colors ${
+                        isActive 
+                          ? "bg-white border border-[var(--border-subtle)] text-[var(--brand-primary)] shadow-sm" 
+                          : "bg-[var(--surface-muted)] border border-transparent text-[var(--foreground-muted)]"
+                      }`}>
                         {formattedCode}
                       </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </>
-          ) : (
-            <li className="px-4 py-4 text-sm text-gray-600 leading-relaxed">
-              No matches yet. Try a broader role keyword (for example, "software", "analyst", or "engineer").
-            </li>
-          )}
-        </ul>
-      )}
+                    </li>
+                  );
+                })}
+              </>
+            ) : (
+              <li className="px-4 py-6 text-sm text-[var(--foreground-muted)] text-center font-medium">
+                No matches found. Try <span className="text-[var(--foreground)]">"software"</span> or <span className="text-[var(--foreground)]">"analyst"</span>.
+              </li>
+            )}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
