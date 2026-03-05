@@ -5,7 +5,7 @@ import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl, MapRef 
 import "mapbox-gl/dist/mapbox-gl.css";
 import bbox from "@turf/bbox"; 
 import { ChevronDown, MapPin, Loader2, AlertCircle, ExternalLink, CheckCircle2, TrendingUp } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";

@@ -7,7 +7,7 @@ import {
   ArrowRight, AlertCircle, Loader2,
   CheckCircle2, Info, SearchX, RotateCcw
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence , Variants} from "framer-motion";
 
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
@@ -37,7 +37,7 @@ function formatSocCode(code: string): string {
 }
 
 // Animation variants for staggered list reveals
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -45,7 +45,7 @@ const containerVariants = {
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 15 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };

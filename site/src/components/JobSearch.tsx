@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, KeyboardEvent } from "react";
 import { Search, X, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 
 interface Job { code: string; base_soc: string; title: string; }
 
