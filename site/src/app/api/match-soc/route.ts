@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { z } from "zod";
 import fs from "fs";
 import path from "path";
@@ -80,8 +82,20 @@ interface SocIndex {
   averageTechLength: number;
 }
 
+interface CachedResultEntry {
+  results: AiResult[];
+  expiresAt: number;
+}
+
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = "gpt-4o-mini";
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 12;
+const RATE_LIMIT_BLOCK_MESSAGE =
+  "Too many SOC searches from this connection. Please wait a few minutes and try again.";
+const RESULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const REDIS_RATE_LIMIT_PREFIX = "soc-match:ratelimit";
+const REDIS_RESULT_CACHE_PREFIX = "soc-match:cache";
 
 const RequestSchema = z.object({
   description: z
@@ -111,6 +125,20 @@ const AiResponseSchema = z.object({
 });
 
 let cachedSocIndex: SocIndex | null = null;
+const requestLog = new Map<string, number[]>();
+const resultCache = new Map<string, CachedResultEntry>();
+const hasUpstashRedisEnv = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+);
+const redis = hasUpstashRedisEnv ? Redis.fromEnv() : null;
+const redisRateLimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX_REQUESTS, `${RATE_LIMIT_WINDOW_MS / 1000} s`),
+      prefix: REDIS_RATE_LIMIT_PREFIX,
+      analytics: true,
+    })
+  : null;
 
 const STOPWORDS = new Set([
   "the",
@@ -226,6 +254,97 @@ function sponsorshipPrior(job: SocJob): number {
 
 function normalizeText(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9+#.\-\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getClientIdentifier(req: Request): string {
+  const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  const userAgent = req.headers.get("user-agent")?.trim() || "unknown-agent";
+  return `${forwardedFor || realIp || "unknown-ip"}:${userAgent}`;
+}
+
+function enforceLocalRateLimit(
+  clientId: string
+): { allowed: true } | { allowed: false; retryAfterSec: number } {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const recentRequests = (requestLog.get(clientId) ?? []).filter((timestamp) => timestamp > windowStart);
+
+  if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const oldestRequest = recentRequests[0];
+    const retryAfterMs = Math.max(1000, oldestRequest + RATE_LIMIT_WINDOW_MS - now);
+    requestLog.set(clientId, recentRequests);
+    return { allowed: false, retryAfterSec: Math.ceil(retryAfterMs / 1000) };
+  }
+
+  recentRequests.push(now);
+  requestLog.set(clientId, recentRequests);
+  return { allowed: true };
+}
+
+async function enforceRateLimit(
+  clientId: string
+): Promise<{ allowed: true } | { allowed: false; retryAfterSec: number }> {
+  if (!redisRateLimit) {
+    return enforceLocalRateLimit(clientId);
+  }
+
+  const result = await redisRateLimit.limit(clientId);
+  if (result.success) {
+    return { allowed: true };
+  }
+
+  const retryAfterSec = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+  return { allowed: false, retryAfterSec };
+}
+
+function buildCacheKey(description: string, techStack: string): string {
+  return `${normalizeText(description)}||${normalizeText(techStack)}`;
+}
+
+function getLocalCachedResult(cacheKey: string): AiResult[] | null {
+  const entry = resultCache.get(cacheKey);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    resultCache.delete(cacheKey);
+    return null;
+  }
+  return entry.results;
+}
+
+function setLocalCachedResult(cacheKey: string, results: AiResult[]): void {
+  resultCache.set(cacheKey, {
+    results,
+    expiresAt: Date.now() + RESULT_CACHE_TTL_MS,
+  });
+}
+
+async function getCachedResult(cacheKey: string): Promise<AiResult[] | null> {
+  if (!redis) {
+    return getLocalCachedResult(cacheKey);
+  }
+
+  const cached = await redis.get<string>(`${REDIS_RESULT_CACHE_PREFIX}:${cacheKey}`);
+  if (!cached) return null;
+
+  try {
+    const parsed = JSON.parse(cached) as unknown;
+    const validated = z.array(AiResultSchema).safeParse(parsed);
+    return validated.success ? validated.data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function setCachedResult(cacheKey: string, results: AiResult[]): Promise<void> {
+  if (!redis) {
+    setLocalCachedResult(cacheKey, results);
+    return;
+  }
+
+  await redis.set(`${REDIS_RESULT_CACHE_PREFIX}:${cacheKey}`, JSON.stringify(results), {
+    ex: Math.ceil(RESULT_CACHE_TTL_MS / 1000),
+  });
 }
 
 function tokenize(text: string): string[] {
@@ -727,6 +846,24 @@ function fallbackResults(candidates: Candidate[]): AiResult[] {
   }));
 }
 
+function shouldUseOpenAi(candidates: Candidate[]): boolean {
+  if (!process.env.OPENAI_API_KEY) return false;
+  if (candidates.length === 0) return false;
+  if (candidates.length === 1) return false;
+
+  const topCandidate = candidates[0];
+  const runnerUp = candidates[1];
+  const scoreGap = topCandidate.score - runnerUp.score;
+  const scoreRatio = runnerUp.score > 0 ? topCandidate.score / runnerUp.score : Number.POSITIVE_INFINITY;
+  const strongDeterministicMatch =
+    topCandidate.confidence >= 0.82 &&
+    scoreGap >= 8 &&
+    scoreRatio >= 1.22 &&
+    (topCandidate.matchedPhrases.length >= 1 || topCandidate.matchedTerms.length >= 5);
+
+  return !strongDeterministicMatch;
+}
+
 function sanitizeModelResults(rawContent: string, candidates: Candidate[]): AiResult[] {
   let parsedRaw: unknown;
   try {
@@ -783,6 +920,7 @@ async function requestOpenAiResults(
     body: JSON.stringify({
       model: OPENAI_MODEL,
       temperature: 0,
+      max_tokens: 220,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -838,6 +976,20 @@ Output format:
 
 export async function POST(req: Request) {
   try {
+    const clientId = getClientIdentifier(req);
+    const rateLimit = await enforceRateLimit(clientId);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: RATE_LIMIT_BLOCK_MESSAGE },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfterSec),
+          },
+        }
+      );
+    }
+
     const body: unknown = await req.json();
     const parsedBody = RequestSchema.safeParse(body);
 
@@ -849,6 +1001,12 @@ export async function POST(req: Request) {
     }
 
     const { description, tech_stack } = parsedBody.data;
+    const cacheKey = buildCacheKey(description, tech_stack);
+    const cachedResults = await getCachedResult(cacheKey);
+    if (cachedResults) {
+      return NextResponse.json({ results: cachedResults });
+    }
+
     const socIndex = loadSocIndex();
 
     if (socIndex.jobs.length === 0) {
@@ -860,8 +1018,11 @@ export async function POST(req: Request) {
 
     const candidates = findCandidates(description, tech_stack, socIndex);
     if (candidates.length === 0) {
+      await setCachedResult(cacheKey, []);
       return NextResponse.json({ results: [] });
     }
+
+    const localResults = fallbackResults(candidates);
 
     const context = JSON.stringify(
       candidates.map((candidate) => ({
@@ -890,25 +1051,31 @@ export async function POST(req: Request) {
       }))
     );
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ results: fallbackResults(candidates) });
+    if (!shouldUseOpenAi(candidates)) {
+      await setCachedResult(cacheKey, localResults);
+      return NextResponse.json({ results: localResults });
     }
 
     try {
       const content = await requestOpenAiResults(description, tech_stack, context);
       if (!content) {
-        return NextResponse.json({ results: fallbackResults(candidates) });
+        await setCachedResult(cacheKey, localResults);
+        return NextResponse.json({ results: localResults });
       }
 
       const sanitized = sanitizeModelResults(content, candidates);
       if (sanitized.length > 0) {
-        return NextResponse.json({ results: sanitized.slice(0, 3) });
+        const finalResults = sanitized.slice(0, 3);
+        await setCachedResult(cacheKey, finalResults);
+        return NextResponse.json({ results: finalResults });
       }
 
-      return NextResponse.json({ results: fallbackResults(candidates) });
+      await setCachedResult(cacheKey, localResults);
+      return NextResponse.json({ results: localResults });
     } catch (providerError) {
       console.error("[SOC_MATCH_ERROR] OpenAI request failed", providerError);
-      return NextResponse.json({ results: fallbackResults(candidates) });
+      await setCachedResult(cacheKey, localResults);
+      return NextResponse.json({ results: localResults });
     }
   } catch (error) {
     console.error("[SOC_MATCH_ERROR]", error);
