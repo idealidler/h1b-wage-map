@@ -271,42 +271,42 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
         {/* Re-designed Probability Legend */}
         {status === "ready" && (
-          <div role="group" aria-label="Estimated registration odds legend" className="absolute bottom-6 left-4 z-10 bg-[var(--surface-floating)] backdrop-blur-xl shadow-[var(--shadow-floating)] rounded-[var(--radius-surface)] border border-[var(--border-subtle)] p-4 w-[calc(100%-2rem)] max-w-64">
-              <h4 className="text-[13px] font-bold text-[var(--foreground)] mb-1">Estimated Registration Odds</h4>
-              <p className="text-[11px] leading-relaxed text-[var(--foreground-muted)] mb-3">
+          <div role="group" aria-label="Estimated registration odds legend" className="absolute bottom-4 left-3 right-3 z-10 w-auto rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-floating)] p-3 shadow-[var(--shadow-floating)] backdrop-blur-xl sm:bottom-6 sm:left-4 sm:right-auto sm:w-64 sm:max-w-64 sm:p-4">
+              <h4 className="mb-1 text-xs font-bold text-[var(--foreground)] sm:text-[13px]">Estimated Registration Odds</h4>
+              <p className="mb-2 text-[10px] leading-relaxed text-[var(--foreground-muted)] sm:mb-3 sm:text-[11px]">
                 Estimates based on the H-1B registration rule&apos;s weighted entries, not a guarantee of selection.
               </p>
               
               
-              <div className="space-y-2.5">
-                  <div className="flex items-center justify-between group">
+              <div className="grid grid-cols-2 gap-2 sm:block sm:space-y-2.5">
+                  <div className="group flex items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background-alt)] p-2 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-success)] shadow-sm"></span>
-                      <span className="text-[13px] font-bold text-[var(--foreground)]">L4 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">4x Entries</span></span>
+                      <span className="h-3 w-3 shrink-0 rounded-md bg-[var(--brand-success)] shadow-sm"></span>
+                      <span className="text-xs font-bold text-[var(--foreground)] sm:text-[13px]">L4 <span className="ml-1 text-[10px] font-medium text-[var(--foreground-muted)] sm:text-xs">4x</span></span>
                     </div>
                     <span className="text-[12px] font-bold text-[var(--brand-success)]">~61%</span>
                   </div>
                   
-                  <div className="flex items-center justify-between group">
+                  <div className="group flex items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background-alt)] p-2 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-primary)] shadow-sm"></span>
-                      <span className="text-[13px] font-bold text-[var(--foreground)]">L3 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">3x Entries</span></span>
+                      <span className="h-3 w-3 shrink-0 rounded-md bg-[var(--brand-primary)] shadow-sm"></span>
+                      <span className="text-xs font-bold text-[var(--foreground)] sm:text-[13px]">L3 <span className="ml-1 text-[10px] font-medium text-[var(--foreground-muted)] sm:text-xs">3x</span></span>
                     </div>
                     <span className="text-[12px] font-bold text-[var(--brand-primary)]">~46%</span>
                   </div>
                   
-                  <div className="flex items-center justify-between group">
+                  <div className="group flex items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background-alt)] p-2 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-accent)] shadow-sm"></span>
-                      <span className="text-[13px] font-bold text-[var(--foreground)]">L2 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">2x Entries</span></span>
+                      <span className="h-3 w-3 shrink-0 rounded-md bg-[var(--brand-accent)] shadow-sm"></span>
+                      <span className="text-xs font-bold text-[var(--foreground)] sm:text-[13px]">L2 <span className="ml-1 text-[10px] font-medium text-[var(--foreground-muted)] sm:text-xs">2x</span></span>
                     </div>
                     <span className="text-[12px] font-bold text-[var(--brand-accent)]">~30%</span>
                   </div>
                   
-                  <div className="flex items-center justify-between group">
+                  <div className="group flex items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background-alt)] p-2 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-3.5 h-3.5 rounded-md bg-[var(--brand-warning)] shadow-sm"></span>
-                      <span className="text-[13px] font-bold text-[var(--foreground)]">L1 <span className="text-[var(--foreground-muted)] font-medium text-xs ml-1">1x Entry</span></span>
+                      <span className="h-3 w-3 shrink-0 rounded-md bg-[var(--brand-warning)] shadow-sm"></span>
+                      <span className="text-xs font-bold text-[var(--foreground)] sm:text-[13px]">L1 <span className="ml-1 text-[10px] font-medium text-[var(--foreground-muted)] sm:text-xs">1x</span></span>
                     </div>
                     <span className="text-[12px] font-bold text-[var(--brand-warning)]">~15%</span>
                   </div>
@@ -315,7 +315,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                 href={FR_RULE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--brand-primary)] hover:underline"
+                className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-[var(--brand-primary)] hover:underline sm:mt-3 sm:text-[11px]"
               >
                 Read the registration rule <ExternalLink className="h-3 w-3" aria-hidden="true" />
               </a>
