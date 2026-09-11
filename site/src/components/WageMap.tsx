@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
+const MAP_REQUEST_TIMEOUT_MS = 15_000;
 const FR_RULE_URL =
   "https://www.federalregister.gov/documents/2025/12/29/2025-23853/weighted-selection-process-for-registrants-and-petitioners-seeking-to-file-cap-subject-h-1b";
 
@@ -24,11 +25,23 @@ const COLORS = {
 let cachedGeoJson: GeoJSON.FeatureCollection | null = null;
 let geoJsonRequest: Promise<GeoJSON.FeatureCollection> | null = null;
 const wageDataCache = new globalThis.Map<string, Record<string, WageData>>();
+const wageDataRequests = new globalThis.Map<string, Promise<Record<string, WageData>>>();
+
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), MAP_REQUEST_TIMEOUT_MS);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 
 async function loadGeoJson(): Promise<GeoJSON.FeatureCollection> {
   if (cachedGeoJson) return cachedGeoJson;
   if (!geoJsonRequest) {
-    geoJsonRequest = fetch(GEOJSON_URL, { cache: "force-cache" }).then(async (response) => {
+    geoJsonRequest = fetchWithTimeout(GEOJSON_URL, { cache: "force-cache" }).then(async (response) => {
       if (!response.ok) throw new Error("Failed to load map geometry");
       const data = (await response.json()) as GeoJSON.FeatureCollection;
       cachedGeoJson = data;
@@ -44,12 +57,20 @@ async function loadGeoJson(): Promise<GeoJSON.FeatureCollection> {
 async function loadWageData(baseSocCode: string): Promise<Record<string, WageData>> {
   const cached = wageDataCache.get(baseSocCode);
   if (cached) return cached;
+  const pending = wageDataRequests.get(baseSocCode);
+  if (pending) return pending;
 
-  const response = await fetch(`/jobs-2026-27/${baseSocCode}.json`, { cache: "force-cache" });
-  if (!response.ok) throw new Error("No wage data found");
-  const data = (await response.json()) as Record<string, WageData>;
-  wageDataCache.set(baseSocCode, data);
-  return data;
+  const request = fetchWithTimeout(`/jobs-2026-27/${baseSocCode}.json`, { cache: "force-cache" })
+    .then(async (response) => {
+      if (!response.ok) throw new Error("No wage data found");
+      const data = (await response.json()) as Record<string, WageData>;
+      wageDataCache.set(baseSocCode, data);
+      return data;
+    })
+    .finally(() => wageDataRequests.delete(baseSocCode));
+
+  wageDataRequests.set(baseSocCode, request);
+  return request;
 }
 
 interface WageData { s: string; c: string; l1: number; l2: number; l3: number; l4: number; }
@@ -183,7 +204,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
       });
       if (feature) {
           const [minLng, minLat, maxLng, maxLat] = bbox(feature);
-          mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: { top: 320, bottom: 50, left: 50, right: 50 }, maxZoom: 9.5, duration: 2000 });
+          const isMobile = window.matchMedia("(max-width: 639px)").matches;
+          mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: isMobile ? 32 : { top: 320, bottom: 50, left: 50, right: 50 }, maxZoom: 9.5, duration: 2000 });
           setSelectedInfo({ longitude: (minLng + maxLng) / 2, latitude: (minLat + maxLat) / 2, properties: feature.properties as WageFeatureProperties });
           setHoverInfo(null);
       }
@@ -225,27 +247,27 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-              <div className="relative group w-full md:w-48">
+            <div className="flex w-full flex-col items-center gap-3 sm:flex-row md:w-auto">
+              <div className="relative group w-full sm:flex-1 md:w-48 md:flex-none">
                   <select
                     aria-label="Select state"
                     value={selectedState}
                     disabled={status !== "ready"}
                     onChange={(e) => { setSelectedState(e.target.value); setSelectedCountyFips(""); if(e.target.value) handleJumpToState(e.target.value); }}
-                    className="appearance-none bg-[var(--background-alt)] border border-[var(--border-subtle)] text-[var(--foreground)] text-sm rounded-xl focus:bg-white focus:ring-4 focus:ring-[var(--ring-subtle)] focus:border-[var(--brand-primary)] block w-full p-3 pr-8 cursor-pointer font-medium disabled:opacity-50 transition-all outline-none"
+                    className="block min-h-12 w-full appearance-none rounded-xl border border-[var(--border-subtle)] bg-[var(--background-alt)] p-3 pr-8 text-sm font-medium text-[var(--foreground)] outline-none transition-all focus:border-[var(--brand-primary)] focus:bg-white focus:ring-4 focus:ring-[var(--ring-subtle)] disabled:opacity-50"
                   >
                       <option value="">Select State</option>
                       {locationList.map((loc) => (<option key={loc.state} value={loc.state}>{loc.state}</option>))}
                   </select>
                   <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-[var(--foreground-muted)] pointer-events-none" />
               </div>
-              <div className="relative group w-full md:w-56">
+              <div className="relative group w-full sm:flex-1 md:w-56 md:flex-none">
                   <select
                     aria-label="Select county"
                     value={selectedCountyFips}
                     disabled={!selectedState || status !== "ready"}
                     onChange={(e) => { setSelectedCountyFips(e.target.value); if(e.target.value) handleJumpToCounty(e.target.value); }}
-                    className="appearance-none bg-[var(--background-alt)] border border-[var(--border-subtle)] text-[var(--foreground)] text-sm rounded-xl focus:bg-white focus:ring-4 focus:ring-[var(--ring-subtle)] focus:border-[var(--brand-primary)] block w-full p-3 pr-8 cursor-pointer font-medium disabled:opacity-50 transition-all outline-none"
+                    className="block min-h-12 w-full appearance-none rounded-xl border border-[var(--border-subtle)] bg-[var(--background-alt)] p-3 pr-8 text-sm font-medium text-[var(--foreground)] outline-none transition-all focus:border-[var(--brand-primary)] focus:bg-white focus:ring-4 focus:ring-[var(--ring-subtle)] disabled:opacity-50"
                   >
                       <option value="">Select County</option>
                       {selectedState && locationList.find(l => l.state === selectedState)?.counties.map((c) => (<option key={c.fips} value={c.fips}>{c.name}</option>))}
@@ -271,7 +293,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
         {/* Re-designed Probability Legend */}
         {status === "ready" && (
-          <div role="group" aria-label="Estimated registration odds legend" className="absolute bottom-4 left-3 right-3 z-10 w-auto rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-floating)] p-3 shadow-[var(--shadow-floating)] backdrop-blur-xl sm:bottom-6 sm:left-4 sm:right-auto sm:w-64 sm:max-w-64 sm:p-4">
+          <div role="group" aria-label="Estimated registration odds legend" className="absolute bottom-6 left-4 right-auto z-10 hidden w-64 max-w-64 rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-floating)] p-4 shadow-[var(--shadow-floating)] backdrop-blur-xl sm:block">
               <h4 className="mb-1 text-xs font-bold text-[var(--foreground)] sm:text-[13px]">Estimated Registration Odds</h4>
               <p className="mb-2 text-[10px] leading-relaxed text-[var(--foreground-muted)] sm:mb-3 sm:text-[11px]">
                 Estimates based on the H-1B registration rule&apos;s weighted entries, not a guarantee of selection.
@@ -365,7 +387,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                   closeButton={false} 
                   closeOnClick={false} 
                   className="z-50 !rounded-2xl overflow-hidden" 
-                  maxWidth="360px"
+                  maxWidth="calc(100vw - 24px)"
                 >
                     <div className="p-2 font-sans bg-white">
                         <div className="mb-4 border-b border-[var(--border-subtle)] pb-3">
@@ -417,6 +439,32 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             )}
         </Map>
       </div>
+
+      {status === "ready" && (
+        <section role="group" aria-label="Estimated registration odds legend" className="rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-floating)] p-3 shadow-[var(--shadow-surface)] sm:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-bold text-[var(--foreground)]">Estimated registration odds</h4>
+              <p className="mt-1 text-[10px] leading-relaxed text-[var(--foreground-muted)]">Weighted-entry estimates, not a guarantee of selection.</p>
+            </div>
+            <a href={FR_RULE_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[10px] font-bold text-[var(--brand-primary)] underline underline-offset-2">Rule source</a>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            {[
+              { level: "L4", entries: "4x", odds: "61%", color: "var(--brand-success)" },
+              { level: "L3", entries: "3x", odds: "46%", color: "var(--brand-primary)" },
+              { level: "L2", entries: "2x", odds: "30%", color: "var(--brand-accent)" },
+              { level: "L1", entries: "1x", odds: "15%", color: "var(--brand-warning)" },
+            ].map((item) => (
+              <div key={item.level} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--background-alt)] px-1.5 py-2 text-center">
+                <span className="block text-[11px] font-bold text-[var(--foreground)]">{item.level}</span>
+                <span className="mt-0.5 block text-[10px] font-medium text-[var(--foreground-muted)]">{item.entries}</span>
+                <span className="mt-1 block font-mono text-[11px] font-bold" style={{ color: item.color }}>{item.odds}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
     </div>
   );
