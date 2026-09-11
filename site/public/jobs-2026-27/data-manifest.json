@@ -1,0 +1,12 @@
+{
+  "dataset": "OFLC Wage Year 2026-27",
+  "effective_period": "July 2026 - June 2027",
+  "source": "U.S. Department of Labor OFLC",
+  "primary_wage_file": "ALC_Export.csv",
+  "geography_file": "Geography.csv",
+  "occupation_file": "oes_soc_occs.csv",
+  "wage_rows": 449440,
+  "mapped_rows": 2655936,
+  "soc_count": 848,
+  "generated_at_utc": "2026-09-11T16:51:39.021009+00:00"
+}

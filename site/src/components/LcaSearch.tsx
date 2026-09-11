@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SocOption {
   s: string;
@@ -42,6 +42,7 @@ type SortMode = "filings" | "alphabetical";
 interface LcaSearchProps {
   inputId?: string;
   spotlight?: boolean;
+  onSelectSoc?: (soc: string, title: string) => void;
 }
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -68,7 +69,7 @@ function sortYearsDesc(years: number[]): number[] {
   return [...years].filter(Number.isFinite).sort((a, b) => b - a);
 }
 
-export default function LcaSearch({ inputId = "employer-search-input", spotlight = false }: LcaSearchProps) {
+export default function LcaSearch({ inputId = "employer-search-input", spotlight = false, onSelectSoc }: LcaSearchProps) {
   const router = useRouter();
 
   const [dataCache, setDataCache] = useState<CompanyMap>({});
@@ -76,6 +77,7 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
 
   const [companySearch, setCompanySearch] = useState("");
   const [isCompanyInputFocused, setIsCompanyInputFocused] = useState(false);
+  const [activeCompanyIndex, setActiveCompanyIndex] = useState(-1);
   const [loadingShard, setLoadingShard] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
 
@@ -116,16 +118,20 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
   useEffect(() => {
     const query = debouncedCompanySearch.trim();
     if (query.length < 2) {
-      setCompanyError(null);
-      setLoadingShard(null);
-      return;
+      const clearTimer = setTimeout(() => {
+        setCompanyError(null);
+        setLoadingShard(null);
+      }, 0);
+      return () => clearTimeout(clearTimer);
     }
 
     const key = getShardKey(query);
     if (loadedShards.has(key)) return;
 
-    setLoadingShard(key);
-    setCompanyError(null);
+    const startTimer = setTimeout(() => {
+      setLoadingShard(key);
+      setCompanyError(null);
+    }, 0);
 
     const abortController = new AbortController();
 
@@ -150,8 +156,16 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
         setLoadingShard((prev) => (prev === key ? null : prev));
       });
 
-    return () => abortController.abort();
+    return () => {
+      clearTimeout(startTimer);
+      abortController.abort();
+    };
   }, [debouncedCompanySearch, loadedShards]);
+
+  useEffect(() => {
+    const resetTimer = setTimeout(() => setActiveCompanyIndex(-1), 0);
+    return () => clearTimeout(resetTimer);
+  }, [normalizedCompanySearch]);
 
   const filteredCompanies = useMemo(() => {
     if (!normalizedCompanySearch || normalizedCompanySearch.length < 2) return [];
@@ -229,7 +243,8 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
   const hasMoreTitles = preparedTitles.length > visibleCount;
 
   useEffect(() => {
-    setVisibleCount(8);
+    const resetTimer = setTimeout(() => setVisibleCount(8), 0);
+    return () => clearTimeout(resetTimer);
   }, [selectedCompany, titleSearch, sortMode]);
 
   const openCompany = (companyName: string) => {
@@ -245,19 +260,52 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
     setCompanyError(null);
   };
 
+  const handleCompanyKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isDropdownOpen || filteredCompanies.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveCompanyIndex((current) => (current + 1) % filteredCompanies.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveCompanyIndex((current) => (current <= 0 ? filteredCompanies.length - 1 : current - 1));
+    } else if (event.key === "Enter" && activeCompanyIndex >= 0) {
+      event.preventDefault();
+      openCompany(filteredCompanies[activeCompanyIndex].name);
+    } else if (event.key === "Escape") {
+      setIsCompanyInputFocused(false);
+    }
+  };
+
   const goToWageMap = (option: SocOption) => {
-    router.push(`/?soc=${formatSocCode(option.s)}&title=${encodeURIComponent(option.t)}`);
+    const soc = formatSocCode(option.s);
+    onSelectSoc?.(soc, option.t);
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("soc", soc);
+    params.set("title", option.t);
+    router.push(`/?${params.toString()}`, { scroll: false });
+
+    requestAnimationFrame(() => {
+      document.getElementById("wage-map-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   return (
-    <section className="w-full space-y-6 animate-in fade-in duration-500">
+    <section className="w-full space-y-6 animate-in fade-in duration-500" aria-label="Employer LCA research">
       {!selectedCompany ? (
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="mx-auto max-w-3xl space-y-5">
+          <div className="flex flex-col gap-3 rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--background-alt)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">Historical LCA index</p>
+              <p className="mt-1 text-sm font-medium leading-6 text-[var(--foreground-muted)]">Search an employer to see the role titles and SOC codes used in certified filings.</p>
+            </div>
+            <span className="shrink-0 font-mono text-xs font-bold text-[var(--foreground-muted)]">2022 - 2025</span>
+          </div>
           <div className="relative group" ref={searchContainerRef}>
-            
-            {/* Modernized Search Input */}
+            <label htmlFor={inputId} className="mb-2 block text-sm font-bold text-[var(--foreground)]">Search employer name</label>
             <div
-              className={`relative flex items-center bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-sm ${
+              className={`relative flex items-center rounded-[var(--radius-control)] border bg-[var(--surface-raised)] transition-all duration-300 overflow-hidden shadow-[var(--shadow-surface)] ${
                 spotlight
                   ? "border-[var(--brand-primary)] ring-4 ring-[var(--ring-subtle)]"
                   : "border-[var(--border-subtle)] focus-within:border-[var(--brand-primary)] focus-within:ring-4 focus-within:ring-[var(--ring-subtle)]"
@@ -279,11 +327,14 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
                 aria-expanded={isDropdownOpen}
                 aria-controls={companyListboxId}
                 aria-autocomplete="list"
+                aria-busy={isSearchingCompanies}
+                aria-activedescendant={activeCompanyIndex >= 0 ? `company-option-${activeCompanyIndex}` : undefined}
                 value={companySearch}
                 onChange={(e) => setCompanySearch(e.target.value)}
                 onFocus={() => setIsCompanyInputFocused(true)}
+                onKeyDown={handleCompanyKeyDown}
                 placeholder="Search employer (e.g. Google, Deloitte, Microsoft)"
-                className="w-full py-4 px-3 bg-transparent border-0 outline-none focus:ring-0 text-[var(--foreground)] font-medium placeholder:text-[var(--foreground-muted)] min-h-[54px]"
+                className="w-full min-h-[56px] border-0 bg-transparent px-3 py-4 text-[15px] font-medium text-[var(--foreground)] outline-none focus:ring-0 placeholder:text-[var(--foreground-muted)]"
               />
 
               {companySearch && (
@@ -310,17 +361,23 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
                   role="listbox"
                   className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl border border-[var(--border-subtle)] rounded-2xl shadow-lg z-50 overflow-hidden p-1.5 flex flex-col gap-0.5"
                 >
-                  {filteredCompanies.length > 0 && (
-                    <li className="px-3 pt-2 pb-1.5 text-[10px] font-bold text-[var(--foreground-muted)] uppercase tracking-widest ml-1">
-                      Top Employers
+                  {isSearchingCompanies && (
+                    <li className="flex items-center gap-2 px-4 py-5 text-sm font-medium text-[var(--foreground-muted)]" role="status">
+                      <Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" />
+                      Loading employer records...
                     </li>
                   )}
-                  {filteredCompanies.map((company) => (
-                    <li key={company.name} role="option">
+                  {filteredCompanies.length > 0 && !isSearchingCompanies && (
+                    <li className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)] ml-1">
+                      Matching employers · use arrow keys to choose
+                    </li>
+                  )}
+                  {filteredCompanies.map((company, index) => (
+                    <li key={company.name} id={`company-option-${index}`} role="option" aria-selected={activeCompanyIndex === index}>
                       <button
                         type="button"
                         onClick={() => openCompany(company.name)}
-                        className="w-full text-left px-4 py-3 rounded-xl flex items-center justify-between hover:bg-[var(--surface-muted)] transition-all duration-200 group"
+                        className={`group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-all duration-200 ${activeCompanyIndex === index ? "bg-[var(--brand-primary-muted)]" : "hover:bg-[var(--surface-muted)]"}`}
                       >
                         <div className="flex items-center gap-3">
                           <Building2 className="w-5 h-5 text-[var(--foreground-muted)] group-hover:text-[var(--brand-primary)] transition-colors" />
@@ -352,7 +409,7 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
         <div className="space-y-4 max-w-5xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
           
           {/* Company Header Card */}
-          <div className="sticky top-2 z-20 rounded-2xl border border-[var(--border-subtle)] bg-white/80 backdrop-blur-xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(15,23,42,0.03)] transition-all">
+          <div className="sticky top-2 z-20 rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-floating)] p-5 shadow-[var(--shadow-floating)] backdrop-blur-xl transition-all sm:p-6">
             <button
               type="button"
               onClick={() => {
@@ -369,12 +426,12 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
               <div>
                 <h2 className="text-3xl font-bold text-[var(--foreground)] tracking-tight">{selectedCompany}</h2>
-                <p className="text-[var(--foreground-muted)] mt-1.5 font-medium">
-                  Select a role title to view available SOC mappings.
+                <p className="mt-1.5 max-w-xl font-medium leading-6 text-[var(--foreground-muted)]">
+                  Review the roles this employer has filed, then choose the SOC mapping that best matches your position.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:min-w-[280px]">
+              <div className="grid grid-cols-2 gap-3 lg:min-w-[420px] sm:grid-cols-3">
                 <div className="rounded-xl bg-[var(--surface-muted)] px-4 py-3.5 text-center border border-[var(--border-subtle)]">
                   <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--foreground-muted)]">Total Filings</p>
                   <p className="text-2xl font-bold text-[var(--foreground)] mt-1">{companyStats?.totalFilings.toLocaleString()}</p>
@@ -383,12 +440,16 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
                   <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--foreground-muted)]">Unique Roles</p>
                   <p className="text-2xl font-bold text-[var(--foreground)] mt-1">{companyStats?.uniqueRoles.toLocaleString()}</p>
                 </div>
+                <div className="col-span-2 rounded-xl bg-[var(--surface-muted)] px-4 py-3.5 text-center border border-[var(--border-subtle)] sm:col-span-1">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--foreground-muted)]">Coverage</p>
+                  <p className="text-lg font-bold text-[var(--foreground)] mt-1">{companyStats?.coverageYears}</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Filtering Toolbar */}
-          <div className="rounded-2xl border border-[var(--border-subtle)] bg-white p-4 space-y-4 shadow-sm">
+          <div className="rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-4 space-y-4 shadow-[var(--shadow-surface)]" aria-label="Employer role filters">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
               <div className="relative group">
                 <div className="relative flex items-center bg-[var(--background-alt)] rounded-xl border border-transparent focus-within:border-[var(--brand-primary)] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--ring-subtle)] transition-all duration-300 overflow-hidden">
@@ -425,15 +486,15 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
                 </select>
               </div>
 
-              <p className="text-sm font-medium text-[var(--foreground-muted)] justify-self-end px-2">
-                {preparedTitles.length.toLocaleString()} role{preparedTitles.length !== 1 ? "s" : ""}
+              <p className="justify-self-end px-2 text-sm font-medium text-[var(--foreground-muted)]" aria-live="polite">
+                {preparedTitles.length.toLocaleString()} matching role{preparedTitles.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
 
           {/* Role List Accordion */}
           <div className="space-y-3" aria-live="polite">
-            {visibleTitles.map((item, index) => {
+            {visibleTitles.map((item) => {
               const isExpanded = expandedJob === item.title;
               return (
                 <div
@@ -482,7 +543,10 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
                       >
                         <div className="px-5 pb-5 pt-2">
                           <div className="rounded-xl bg-[var(--background-alt)] border border-[var(--border-subtle)] p-4 space-y-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)] ml-1">Available SOC Mappings</p>
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="ml-1 text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)]">Choose a SOC mapping</p>
+                              <p className="text-xs font-medium text-[var(--foreground-muted)]">Select a mapping to open the wage map</p>
+                            </div>
 
                             {item.options.map((option, optionIndex) => (
                               <button
@@ -545,7 +609,7 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
             {preparedTitles.length === 0 && (
               <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--background-alt)] px-4 py-12 text-center text-[var(--foreground-muted)] font-medium">
                 <Search className="w-8 h-8 mx-auto text-[var(--border-strong)] mb-3" />
-                No role titles match &quot;<span className="text-[var(--foreground)] font-semibold">{titleSearch}</span>&quot;.
+                No role titles match &quot;<span className="font-semibold text-[var(--foreground)]">{titleSearch}</span>&quot;. Try a broader title or clear the filter.
               </div>
             )}
           </div>

@@ -69,7 +69,11 @@ export default function FindSocPage() {
         setLoadingIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
       }, 2200);
     } else {
-      setLoadingIndex(0);
+      const resetTimer = setTimeout(() => setLoadingIndex(0), 0);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(resetTimer);
+      };
     }
     return () => clearInterval(interval);
   }, [loading]);
@@ -145,7 +149,7 @@ export default function FindSocPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[var(--background-alt)] flex flex-col font-sans">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-[var(--background-alt)] flex flex-col font-sans">
       <Navbar />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full flex-grow flex flex-col gap-6">

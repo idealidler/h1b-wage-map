@@ -110,7 +110,7 @@ export default function FaqPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-[var(--background-alt)] font-sans">
+    <main id="main-content" tabIndex={-1} className="min-h-screen flex flex-col bg-[var(--background-alt)] font-sans">
       <Navbar />
 
       <motion.div 

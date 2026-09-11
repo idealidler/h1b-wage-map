@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect, Suspense, useRef } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import JobSearch from "@/components/JobSearch";
-import WageMap from "@/components/WageMap";
-import LcaSearch from "@/components/LcaSearch";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
-import { Link as LinkIcon, Check, Map as MapIcon, Building2, ExternalLink } from "lucide-react";
+import { Link as LinkIcon, Check, Map as MapIcon, ExternalLink, BadgeCheck, X, RotateCcw } from "lucide-react";
 import { motion , Variants} from "framer-motion";
 
 const FR_RULE_URL =
@@ -17,6 +15,16 @@ const FR_PROBABILITY_IMAGE_URL =
   "https://img.federalregister.gov/ER29DE25.021/ER29DE25.021_original_size.png";
 const DOL_WAGE_URL = "https://www.flcdatacenter.com/";
 const DOL_PERFORMANCE_URL = "https://www.dol.gov/agencies/eta/foreign-labor/performance";
+
+const WageMap = dynamic(() => import("@/components/WageMap"), {
+  ssr: false,
+  loading: () => <div className="h-[500px] w-full animate-pulse rounded-2xl bg-slate-100 md:h-[650px]" aria-label="Loading wage map" />,
+});
+
+const LcaSearch = dynamic(() => import("@/components/LcaSearch"), {
+  ssr: false,
+  loading: () => <div className="h-48 w-full animate-pulse rounded-xl bg-slate-100" aria-label="Loading employer search" />,
+});
 
 const containerVariants : Variants = {
   hidden: { opacity: 0 },
@@ -53,28 +61,50 @@ function SocialShare() {
 }
 
 function WageMapContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const [showDataNotice, setShowDataNotice] = useState(true);
 
-  const [selectedSoc, setSelectedSoc] = useState<string>("15-1252.00");
-  const [jobTitle, setJobTitle] = useState<string>("Software Developers");
-  const [salary, setSalary] = useState<number | "">(120000);
+  const initialSoc = searchParams.get("soc");
+  const initialTitle = searchParams.get("title");
+  const initialSalary = Number.parseInt(searchParams.get("salary") || "", 10);
+  const [selectedSoc, setSelectedSoc] = useState<string>(
+    initialSoc ? (initialSoc.includes(".") ? initialSoc : `${initialSoc}.00`) : "15-1252.00"
+  );
+  const [jobTitle, setJobTitle] = useState<string>(initialTitle || "Software Developers");
+  const [salary, setSalary] = useState<number | "">(Number.isFinite(initialSalary) ? initialSalary : 120000);
+  const hasMounted = useRef(false);
   const [employerSpotlight, setEmployerSpotlight] = useState(false);
   const salaryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const urlSoc = searchParams.get("soc");
-    const urlTitle = searchParams.get("title");
-
-    if (urlSoc && urlTitle) {
-      const formattedSoc = urlSoc.includes(".") ? urlSoc : `${urlSoc}.00`;
-      setSelectedSoc(formattedSoc);
-      setJobTitle(urlTitle);
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
     }
-  }, [searchParams]);
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (selectedSoc) params.set("soc", selectedSoc);
+    else params.delete("soc");
+    if (jobTitle) params.set("title", jobTitle);
+    else params.delete("title");
+    if (salary === "") params.delete("salary");
+    else params.set("salary", String(salary));
+    const nextQuery = params.toString();
+    if (nextQuery !== searchParams.toString()) {
+      router.replace(`/?${nextQuery}`, { scroll: false });
+    }
+  }, [jobTitle, router, salary, searchParams, selectedSoc]);
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, "");
     setSalary(rawValue ? parseInt(rawValue, 10) : "");
+  };
+
+  const resetBenchmark = () => {
+    setSelectedSoc("15-1252.00");
+    setJobTitle("Software Developers");
+    setSalary(120000);
   };
 
   // Master Scroll Controller
@@ -144,8 +174,45 @@ function WageMapContent() {
   }, []);
 
   return (
-    <main className="min-h-screen flex flex-col relative font-sans bg-[var(--background-alt)]">
+    <main id="main-content" tabIndex={-1} className="dashboard-canvas min-h-screen flex flex-col relative font-sans">
       <Navbar />
+
+      {showDataNotice && (
+        <div className="border-b border-emerald-200 bg-emerald-50" role="status" aria-label="Current wage data">
+          <div className="relative max-w-7xl mx-auto flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-start gap-3 text-emerald-950">
+            <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-bold leading-5 sm:text-[15px]">
+                Latest DOL-published wage data: OFLC reference dataset
+              </p>
+              <p className="text-xs font-medium leading-5 text-emerald-800 sm:text-sm">
+                Data series: 07/2026 - 06/2027. Employer filing data is historical.
+              </p>
+            </div>
+          </div>
+          <a
+            href={DOL_WAGE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-8 inline-flex items-center gap-1 text-xs font-bold text-emerald-900 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-700 sm:ml-0 sm:shrink-0 sm:text-sm"
+          >
+            View DOL source <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setShowDataNotice(false);
+            }}
+            className="absolute right-3 top-3 rounded-md p-1 text-emerald-800 transition-colors hover:bg-emerald-100 hover:text-emerald-950 sm:static sm:ml-2"
+            aria-label="Dismiss wage data notice"
+            title="Dismiss wage data notice"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+          </div>
+        </div>
+      )}
 
       <motion.div 
         variants={containerVariants}
@@ -154,32 +221,65 @@ function WageMapContent() {
         className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5 flex-grow w-full"
       >
         {/* Page Header */}
-        <motion.section variants={itemVariants} className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 sm:p-6 shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+        <motion.section variants={itemVariants} className="border-b border-[var(--border-subtle)] pb-6 pt-1 sm:pb-7" aria-labelledby="page-title">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 mb-3 rounded-md bg-[var(--surface-muted)] border border-[var(--border-subtle)]">
-                 <MapIcon className="w-3.5 h-3.5 text-[var(--brand-primary)]" />
-                 <span className="text-[11px] font-bold text-[var(--foreground-muted)] uppercase tracking-widest">Interactive Data Explorer</span>
+              <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--foreground-muted)]">
+                 <span className="inline-flex items-center gap-2 text-[var(--brand-primary)]">
+                   <MapIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                   Wage intelligence workspace
+                 </span>
+                 <span className="h-1 w-1 rounded-full bg-[var(--border-strong)]" aria-hidden="true" />
+                 <span>Data series 07/2026 - 06/2027</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-[var(--foreground)] tracking-tight">
-                H-1B Wage Map FY 2027 🇺🇸
+              <h1 id="page-title" className="text-3xl font-bold tracking-[-0.02em] text-[var(--foreground)] sm:text-4xl">
+                H-1B Wage Map 🇺🇸
               </h1>
-              <p className="text-[15px] text-[var(--foreground-muted)] font-medium mt-1.5 max-w-3xl">
+              <p className="mt-2 max-w-3xl text-[15px] font-medium leading-7 text-[var(--foreground-muted)]">
                 Find your SOC code and check prevailing wage levels across U.S. counties to determine your lottery selection odds.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-start gap-3 lg:items-end">
+              <div className="grid grid-cols-3 gap-4 text-left lg:text-right">
+                <div>
+                  <p className="font-mono text-lg font-bold tracking-tight text-[var(--foreground)]">848</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">SOC codes</p>
+                </div>
+                <div>
+                  <p className="font-mono text-lg font-bold tracking-tight text-[var(--foreground)]">3,131</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">counties</p>
+                </div>
+                <div>
+                  <p className="font-mono text-lg font-bold tracking-tight text-[var(--foreground)]">07/26</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">series start</p>
+                </div>
+              </div>
               <SocialShare />
             </div>
           </div>
         </motion.section>
 
         {/* Core Controls */}
-        <motion.section variants={itemVariants} id="wage-map-workspace" className="rounded-2xl border border-[var(--border-subtle)] bg-white p-5 shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
-          <div className="grid grid-cols-1 md:grid-cols-[1.25fr_1fr] gap-6">
+        <motion.section variants={itemVariants} id="wage-map-workspace" className="rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-5 shadow-[var(--shadow-surface)] sm:p-6">
+          <div className="mb-5 flex flex-col gap-2 border-b border-[var(--border-subtle)] pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">01 / Define your benchmark</p>
+              <h2 className="mt-1 text-lg font-bold tracking-tight text-[var(--foreground)] sm:text-xl">Set the role and compensation</h2>
+              <p className="mt-1 text-sm font-medium text-[var(--foreground-muted)]">Choose an official occupation and enter annual base pay to compare county wage levels.</p>
+            </div>
+            <button
+              type="button"
+              onClick={resetBenchmark}
+              className="inline-flex items-center gap-1.5 self-start text-xs font-bold text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)] sm:self-auto"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              Reset benchmark
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <div className="space-y-2.5">
-              <label htmlFor="soc-search-input" className="text-[13px] font-bold text-[var(--foreground)] uppercase tracking-widest ml-1">
+              <label htmlFor="soc-search-input" className="text-[13px] font-bold text-[var(--foreground)] ml-1">
                 Job Title or SOC Code
               </label>
               <JobSearch
@@ -206,7 +306,7 @@ function WageMapContent() {
             </div>
 
             <div className="space-y-2.5">
-              <label htmlFor="target-salary" className="text-[13px] font-bold text-[var(--foreground)] uppercase tracking-widest ml-1">
+              <label htmlFor="target-salary" className="text-[13px] font-bold text-[var(--foreground)] ml-1">
                 Target Base Salary
               </label>
               <div className="relative group">
@@ -227,7 +327,7 @@ function WageMapContent() {
                 />
               </div>
               <p id="salary-help" className="text-xs text-[var(--foreground-muted)] font-medium ml-1">
-                Base pay only (exclude bonuses and RSUs).
+                Annual base pay only. Exclude bonuses and equity.
               </p>
             </div>
 
@@ -235,7 +335,7 @@ function WageMapContent() {
         </motion.section>
 
         {/* The Map Component */}
-        <motion.section variants={itemVariants} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-1.5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" aria-label="County wage level map">
+        <motion.section id="wage-map-section" variants={itemVariants} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-1.5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]" aria-label="County wage level map">
           <WageMap socCode={selectedSoc} jobTitle={jobTitle} userSalary={salary === "" ? 0 : salary} />
         </motion.section>
 
@@ -244,7 +344,7 @@ function WageMapContent() {
           id="find-soc-employer" 
           animate={employerSpotlight ? { scale: 1.02, y: -5 } : { scale: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className={`scroll-mt-32 mt-6 rounded-2xl border bg-white p-6 sm:p-8 transition-colors duration-700 ${
+          className={`scroll-mt-32 mt-6 rounded-[var(--radius-surface)] border bg-[var(--surface-raised)] p-6 sm:p-8 transition-colors duration-700 ${
             employerSpotlight 
               ? "border-[var(--brand-primary)] ring-4 ring-[var(--ring-subtle)] shadow-[0_16px_40px_rgba(37,99,235,0.12)] relative z-20" 
               : "border-[var(--border-subtle)] shadow-[0_2px_12px_rgba(15,23,42,0.03)] relative z-0"
@@ -252,13 +352,21 @@ function WageMapContent() {
         >
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-[var(--foreground)] tracking-tight">Find SOC Code by Employer LCA Filings</h2>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">03 / Research employer patterns</p>
+              <h2 className="mt-1 text-2xl font-bold text-[var(--foreground)] tracking-tight">Find SOC code by employer filings</h2>
               <p className="text-[15px] font-medium text-[var(--foreground-muted)] mt-1.5">
                 Search historical employer LCA filings to find the closest SOC code before opening the wage map.
               </p>
             </div>
           </div>
-          <LcaSearch inputId="employer-search-input" spotlight={employerSpotlight} />
+          <LcaSearch
+            inputId="employer-search-input"
+            spotlight={employerSpotlight}
+            onSelectSoc={(soc, title) => {
+              setSelectedSoc(soc);
+              setJobTitle(title);
+            }}
+          />
         </motion.section>
 
         {/* Industry Standard References Section */}
@@ -290,9 +398,9 @@ function WageMapContent() {
               <span className="font-mono text-[10px] font-bold bg-[var(--surface-muted)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)] mt-0.5">03</span>
               <div>
                 <a href={FR_RULE_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-[var(--foreground)] hover:text-[var(--brand-primary)] hover:underline underline-offset-2 transition-all inline-flex items-center gap-1">
-                  Federal Register FY2027 Rule <ExternalLink className="w-3 h-3 opacity-50 group-hover:opacity-100" />
+                  Federal Register H-1B Registration Rule <ExternalLink className="w-3 h-3 opacity-50 group-hover:opacity-100" />
                 </a>
-                <p className="text-xs mt-1 leading-relaxed">The final Department of Homeland Security rule dictating the wage-weighted selection framework and legal implementation.</p>
+                <p className="text-xs mt-1 leading-relaxed">The registration rule behind the weighted-entry estimates shown on the map. Estimates are not a guarantee of selection.</p>
               </div>
             </li>
             <li className="flex items-start gap-3 text-[var(--foreground-muted)] group">
@@ -301,7 +409,7 @@ function WageMapContent() {
                 <a href={FR_PROBABILITY_IMAGE_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-[var(--foreground)] hover:text-[var(--brand-primary)] hover:underline underline-offset-2 transition-all inline-flex items-center gap-1">
                   Probability Exhibit Model <ExternalLink className="w-3 h-3 opacity-50 group-hover:opacity-100" />
                 </a>
-                <p className="text-xs mt-1 leading-relaxed">Published weighted-entry probability table establishing multiplier odds for levels I through IV.</p>
+                <p className="text-xs mt-1 leading-relaxed">Published weighted-entry probability table used to explain the estimated registration odds for Levels I through IV.</p>
               </div>
             </li>
           </ol>

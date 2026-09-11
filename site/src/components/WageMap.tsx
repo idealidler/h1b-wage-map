@@ -5,24 +5,52 @@ import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl, MapRef 
 import "mapbox-gl/dist/mapbox-gl.css";
 import bbox from "@turf/bbox"; 
 import { ChevronDown, MapPin, Loader2, AlertCircle, ExternalLink, CheckCircle2, TrendingUp } from "lucide-react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
 const FR_RULE_URL =
   "https://www.federalregister.gov/documents/2025/12/29/2025-23853/weighted-selection-process-for-registrants-and-petitioners-seeking-to-file-cap-subject-h-1b";
-const DOL_WAGE_URL = "https://www.flcdatacenter.com/";
 
 // Synchronized with our global.css tokens for Mapbox Canvas injection
 const COLORS = {
-  L4: "#10b981", // var(--brand-success)
-  L3: "#2563eb", // var(--brand-primary)
-  L2: "#f59e0b", // var(--brand-accent)
-  L1: "#ef4444", // var(--brand-warning)
-  NONE: "#f8fafc", // var(--background-alt)
+  L4: "#10b981",
+  L3: "#2563eb",
+  L2: "#f59e0b",
+  L1: "#ef4444",
+  NONE: "#f5f7fa",
 };
 
 let cachedGeoJson: GeoJSON.FeatureCollection | null = null;
+let geoJsonRequest: Promise<GeoJSON.FeatureCollection> | null = null;
+const wageDataCache = new globalThis.Map<string, Record<string, WageData>>();
+
+async function loadGeoJson(): Promise<GeoJSON.FeatureCollection> {
+  if (cachedGeoJson) return cachedGeoJson;
+  if (!geoJsonRequest) {
+    geoJsonRequest = fetch(GEOJSON_URL, { cache: "force-cache" }).then(async (response) => {
+      if (!response.ok) throw new Error("Failed to load map geometry");
+      const data = (await response.json()) as GeoJSON.FeatureCollection;
+      cachedGeoJson = data;
+      return data;
+    }).catch((error) => {
+      geoJsonRequest = null;
+      throw error;
+    });
+  }
+  return geoJsonRequest;
+}
+
+async function loadWageData(baseSocCode: string): Promise<Record<string, WageData>> {
+  const cached = wageDataCache.get(baseSocCode);
+  if (cached) return cached;
+
+  const response = await fetch(`/jobs-2026-27/${baseSocCode}.json`, { cache: "force-cache" });
+  if (!response.ok) throw new Error("No wage data found");
+  const data = (await response.json()) as Record<string, WageData>;
+  wageDataCache.set(baseSocCode, data);
+  return data;
+}
 
 interface WageData { s: string; c: string; l1: number; l2: number; l3: number; l4: number; }
 interface WageFeatureProperties extends WageData {
@@ -42,7 +70,7 @@ interface NextLevelInfo {
   nextOdds: string;
 }
 
-export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: string; jobTitle: string; userSalary: number; }) {
+export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: string; jobTitle?: string; userSalary: number; }) {
   const mapRef = useRef<MapRef>(null);
   const [geoJson, setGeoJson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [wageMapData, setWageMapData] = useState<Record<string, WageData>>({});
@@ -61,35 +89,34 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   useEffect(() => {
     if (!socCode) return;
     let isMounted = true;
-    setStatus("loading");
-    setWageMapData({}); 
+    const baseSocCode = socCode.split('.')[0];
+    const cachedWageData = wageDataCache.get(baseSocCode);
+    const statusTimer = setTimeout(() => {
+      setStatus(cachedWageData && cachedGeoJson ? "ready" : "loading");
+    }, 0);
 
     const fetchData = async () => {
       try {
-        if (!cachedGeoJson) {
-          const geoRes = await fetch(GEOJSON_URL);
-          if (!geoRes.ok) throw new Error("Failed to load map geometry");
-          cachedGeoJson = await geoRes.json();
-        }
-
-        const baseSocCode = socCode.split('.')[0];
-        const wageRes = await fetch(`/jobs/${baseSocCode}.json`);
-        
-        if (!wageRes.ok) throw new Error("No wage data found");
-        const wageData: Record<string, WageData> = await wageRes.json();
+        const [mapGeometry, wageData] = await Promise.all([
+          loadGeoJson(),
+          loadWageData(baseSocCode),
+        ]);
 
         if (isMounted) {
-          setGeoJson(cachedGeoJson);
+          setGeoJson(mapGeometry);
           setWageMapData(wageData);
           setStatus("ready");
         }
-      } catch (err) {
+      } catch {
         if (isMounted) setStatus("error");
       }
     };
 
     fetchData();
-    return () => { isMounted = false; };
+    return () => {
+      clearTimeout(statusTimer);
+      isMounted = false;
+    };
   }, [socCode]);
 
   const mergedData = useMemo(() => {
@@ -174,19 +201,27 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
   const activePopup = selectedInfo || hoverInfo;
   const gapInfo = activePopup ? getNextLevelInfo(activePopup.properties) : null;
+  const mapStatusMessage = status === "loading"
+    ? "Updating wage data."
+    : status === "error"
+      ? "Wage data is unavailable for this occupation."
+      : status === "ready"
+        ? `Wage data loaded for ${jobTitle || "the selected occupation"}.`
+        : "Select an occupation to load wage data.";
 
   return (
     <div className="flex flex-col gap-2 h-full">
 
       {/* Top Control Bar */}
-      <div className="bg-white rounded-2xl border border-[var(--border-subtle)] p-4 flex flex-col md:flex-row items-center justify-between gap-4 z-10 relative shadow-sm">
+      <div className="bg-[var(--surface-raised)] rounded-[var(--radius-surface)] border border-[var(--border-subtle)] p-4 sm:p-5 flex flex-col md:flex-row md:items-end justify-between gap-4 z-10 relative shadow-[var(--shadow-surface)]">
           <div className="flex items-center gap-3 w-full md:w-auto">
-               <div className="bg-[var(--surface-muted)] p-2.5 rounded-xl hidden sm:block border border-[var(--border-subtle)]">
+            <div className="bg-[var(--surface-muted)] p-2.5 rounded-xl hidden sm:block border border-[var(--border-subtle)]">
                   <MapPin className="w-5 h-5 text-[var(--foreground-muted)]" />
                </div>
                <div>
-                  <h2 className="text-[15px] font-bold text-[var(--foreground)] leading-tight">Explore Regions</h2>
-                  <p className="text-xs text-[var(--foreground-muted)] font-medium">Zoom to a specific state or county</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">02 / Explore wage levels</p>
+              <h2 className="mt-1 text-lg font-bold tracking-tight text-[var(--foreground)] leading-tight">Explore regions</h2>
+              <p className="text-xs text-[var(--foreground-muted)] font-medium">Zoom to a state or county to compare thresholds</p>
                </div>
           </div>
 
@@ -221,9 +256,10 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
       </div>
 
       {/* Map Container */}
-      <div className="h-[500px] md:h-[650px] w-full rounded-2xl overflow-hidden relative bg-[var(--background-alt)] border border-[var(--border-subtle)] shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+      <div aria-busy={status === "loading"} aria-label="Interactive county wage map" role="region" className="h-[420px] sm:h-[500px] md:h-[650px] w-full rounded-[var(--radius-surface)] overflow-hidden relative bg-[var(--background-alt)] border border-[var(--border-subtle)] shadow-[var(--shadow-surface)]">
+        <p className="sr-only" aria-live="polite">{mapStatusMessage}</p>
         {!TOKEN && (<div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-50"><AlertCircle className="w-10 h-10 text-[var(--brand-warning)] mb-3" /><p className="text-[var(--foreground)] font-bold text-lg">Missing Mapbox Token</p></div>)}
-        {status === "loading" && (<div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-40 backdrop-blur-md"><Loader2 className="w-8 h-8 text-[var(--brand-primary)] animate-spin mb-3" /><span className="text-sm font-bold text-[var(--foreground)] tracking-wide">Loading prevailing wage data...</span></div>)}
+        {status === "loading" && (<div className="absolute inset-0 flex flex-col items-center justify-center bg-white/55 z-40 backdrop-blur-[2px]"><Loader2 className="w-8 h-8 text-[var(--brand-primary)] animate-spin mb-3" /><span className="text-sm font-bold text-[var(--foreground)] tracking-wide">Updating wage data...</span><span className="mt-1 text-xs font-medium text-[var(--foreground-muted)]">Your map stays visible while the new role loads.</span></div>)}
         {status === "error" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-40 px-4 text-center backdrop-blur-md">
             <AlertCircle className="w-12 h-12 text-[var(--brand-accent)] mb-3" />
@@ -235,8 +271,11 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
 
         {/* Re-designed Probability Legend */}
         {status === "ready" && (
-          <div className="absolute bottom-6 left-4 z-10 bg-white/95 backdrop-blur-xl shadow-lg rounded-2xl border border-[var(--border-subtle)] p-4 w-64">
-              <h4 className="text-[13px] font-bold text-[var(--foreground)] mb-1">Estimated Selection Odds</h4>
+          <div role="group" aria-label="Estimated registration odds legend" className="absolute bottom-6 left-4 z-10 bg-[var(--surface-floating)] backdrop-blur-xl shadow-[var(--shadow-floating)] rounded-[var(--radius-surface)] border border-[var(--border-subtle)] p-4 w-[calc(100%-2rem)] max-w-64">
+              <h4 className="text-[13px] font-bold text-[var(--foreground)] mb-1">Estimated Registration Odds</h4>
+              <p className="text-[11px] leading-relaxed text-[var(--foreground-muted)] mb-3">
+                Estimates based on the H-1B registration rule&apos;s weighted entries, not a guarantee of selection.
+              </p>
               
               
               <div className="space-y-2.5">
@@ -272,6 +311,14 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                     <span className="text-[12px] font-bold text-[var(--brand-warning)]">~15%</span>
                   </div>
               </div>
+              <a
+                href={FR_RULE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--brand-primary)] hover:underline"
+              >
+                Read the registration rule <ExternalLink className="h-3 w-3" aria-hidden="true" />
+              </a>
           </div>
         )}
 
@@ -303,7 +350,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             <GeolocateControl position="top-right" />
             <NavigationControl position="top-right" showCompass={false} />
 
-            <Source id="county-wage-source" type="geojson" data={(mergedData as any) || { type: "FeatureCollection", features: [] }}>
+            <Source id="county-wage-source" type="geojson" data={mergedData || { type: "FeatureCollection", features: [] }}>
                 <Layer id="county-fill" type="fill" paint={{ "fill-color": ["get", "calculatedColor"], "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.85] }} /> 
                 <Layer id="county-outline" type="line" paint={{ "line-color": "#ffffff", "line-width": 0.5, "line-opacity": 0.3 }} />
                 <Layer id="county-label" type="symbol" minzoom={5.5} layout={{ "text-field": ["get", "c"], "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"], "text-size": 11, "text-anchor": "center", "text-max-width": 6 }} paint={{ "text-color": "#0f172a", "text-halo-color": "#ffffff", "text-halo-width": 2 }} />
@@ -321,7 +368,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                   maxWidth="360px"
                 >
                     <div className="p-2 font-sans bg-white">
-                        <div className="mb-4">
+                        <div className="mb-4 border-b border-[var(--border-subtle)] pb-3">
+                          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">Selected geography</p>
                             <h3 className="font-bold text-[var(--foreground)] text-[17px] leading-tight">{activePopup.properties.c}</h3>
                             <div className="flex items-center justify-between mt-1">
                                 <span className="text-[13px] font-medium text-[var(--foreground-muted)]">{activePopup.properties.s}</span>
@@ -331,12 +379,16 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                             </div>
                         </div>
 
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Annual wage thresholds</p>
                         <div className="space-y-1.5">
                             <LevelRow level={4} amount={activePopup.properties.l4} activeLevel={activePopup.properties.userLevel} tone="success" />
                             <LevelRow level={3} amount={activePopup.properties.l3} activeLevel={activePopup.properties.userLevel} tone="primary" />
                             <LevelRow level={2} amount={activePopup.properties.l2} activeLevel={activePopup.properties.userLevel} tone="accent" />
                             <LevelRow level={1} amount={activePopup.properties.l1} activeLevel={activePopup.properties.userLevel} tone="warning" />
                         </div>
+                        <p className="sr-only">
+                          {activePopup.properties.c}, {activePopup.properties.s}. Annual wage thresholds: Level 1 ${activePopup.properties.l1.toLocaleString()}, Level 2 ${activePopup.properties.l2.toLocaleString()}, Level 3 ${activePopup.properties.l3.toLocaleString()}, Level 4 ${activePopup.properties.l4.toLocaleString()}.
+                        </p>
 
                         {/* Actionable Gap Analysis */}
                         <AnimatePresence>
@@ -353,7 +405,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                                           A <span className="font-bold text-[var(--foreground)]">${gapInfo.diff.toLocaleString()}</span> bump reaches <span className="font-bold">{gapInfo.next}</span>.
                                       </p>
                                       <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                                          This increases selection odds to <span className="font-bold text-[var(--foreground)]">{gapInfo.nextOdds}</span>.
+                                          Under the registration rule, this corresponds to estimated odds of <span className="font-bold text-[var(--foreground)]">{gapInfo.nextOdds}</span>.
                                       </p>
                                     </div>
                                   </div>
@@ -365,6 +417,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
             )}
         </Map>
       </div>
+
     </div>
   );
 }

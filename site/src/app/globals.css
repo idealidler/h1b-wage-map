@@ -3,27 +3,33 @@
 :root {
   /* Core surfaces */
   --background: #ffffff;
-  --background-alt: #f8fafc; /* Softer, slightly cooler slate-50 */
-  --surface-muted: #f1f5f9;  /* slate-100 for hover states */
+  --background-alt: #f5f7fa;
+  --surface-muted: #edf1f5;
+  --surface-raised: #ffffff;
+  --surface-floating: rgba(255, 255, 255, 0.96);
 
   /* Text - Moving away from harsh blacks to sophisticated slates */
-  --foreground: #0f172a;       /* slate-900: High contrast, but softer than pure black */
-  --foreground-muted: #64748b; /* slate-500: Perfect for secondary text */
+  --foreground: #122033;
+  --foreground-muted: #667085;
 
   /* Brand system (Trust + Clarity) */
-  --brand-primary: #2563eb;       /* A mature "Fintech" Blue (blue-600) */
-  --brand-primary-hover: #1d4ed8; /* Deeper blue for hover states */
-  --brand-primary-muted: #eff6ff; /* Soft blue for active dropdown pills */
+  --brand-primary: #315cbb;
+  --brand-primary-hover: #264b9c;
+  --brand-primary-muted: #edf3ff;
   
   /* Map / Wage Level Indicators (Softened for data visualization) */
-  --brand-success: #10b981; /* L4: Emerald */
-  --brand-accent: #f59e0b;  /* L2: Amber (richer, less neon than yellow) */
-  --brand-warning: #ef4444; /* L1: Soft Red */
+  --brand-success: #16806a;
+  --brand-accent: #b98218;
+  --brand-warning: #c94b4b;
 
   /* UI structure - Using rgba for seamless blending */
   --border-subtle: rgba(15, 23, 42, 0.08); 
   --border-strong: rgba(15, 23, 42, 0.15);
   --ring-subtle: rgba(37, 99, 235, 0.15); /* Soft focus ring */
+  --shadow-surface: 0 2px 12px rgba(15, 23, 42, 0.03);
+  --shadow-floating: 0 14px 36px rgba(15, 23, 42, 0.12);
+  --radius-control: 0.875rem;
+  --radius-surface: 1.125rem;
 }
 
 @theme inline {
@@ -32,6 +38,7 @@
   --color-foreground: var(--foreground);
   --color-foreground-muted: var(--foreground-muted);
   --color-surface-muted: var(--surface-muted);
+  --color-surface-raised: var(--surface-raised);
   
   --color-brand-primary: var(--brand-primary);
   --color-brand-success: var(--brand-success);
@@ -41,7 +48,8 @@
   --color-border-subtle: var(--border-subtle);
   --color-border-strong: var(--border-strong);
   
-  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-geist), "Geist", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
 }
 
 body {
@@ -55,6 +63,67 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.dashboard-canvas {
+  background-color: var(--background-alt);
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+body {
+  font-variant-numeric: proportional-nums;
+}
+
+input,
+select,
+button,
+textarea {
+  font: inherit;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 200;
+  transform: translateY(-160%);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-floating);
+  padding: 0.65rem 0.9rem;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-floating);
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--brand-primary-muted);
+  color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-white font-medium py-2.5 px-6 rounded-xl transition-all duration-200 shadow-sm shadow-blue-900/10 active:scale-[0.98] min-h-[44px] flex items-center justify-center outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring-subtle)];
@@ -65,6 +134,6 @@ body {
   }
 
   .card-container {
-    @apply bg-white rounded-2xl border border-[var(--border-subtle)] shadow-[0_2px_12px_rgba(15,23,42,0.03)];
+    @apply bg-[var(--surface-raised)] rounded-[var(--radius-surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-surface)];
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
@@ -89,13 +90,19 @@ interface CachedResultEntry {
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = "gpt-4o-mini";
+const OPENAI_TIMEOUT_MS = 15_000;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 12;
 const RATE_LIMIT_BLOCK_MESSAGE =
   "Too many SOC searches from this connection. Please wait a few minutes and try again.";
 const RESULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const LOCAL_CACHE_MAX_ENTRIES = 500;
+const LOCAL_RATE_LIMIT_MAX_CLIENTS = 2000;
 const REDIS_RATE_LIMIT_PREFIX = "soc-match:ratelimit";
 const REDIS_RESULT_CACHE_PREFIX = "soc-match:cache";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const RequestSchema = z.object({
   description: z
@@ -278,6 +285,10 @@ function enforceLocalRateLimit(
   }
 
   recentRequests.push(now);
+  if (!requestLog.has(clientId) && requestLog.size >= LOCAL_RATE_LIMIT_MAX_CLIENTS) {
+    const oldestClientId = requestLog.keys().next().value;
+    if (oldestClientId) requestLog.delete(oldestClientId);
+  }
   requestLog.set(clientId, recentRequests);
   return { allowed: true };
 }
@@ -299,7 +310,8 @@ async function enforceRateLimit(
 }
 
 function buildCacheKey(description: string, techStack: string): string {
-  return `${normalizeText(description)}||${normalizeText(techStack)}`;
+  const normalizedInput = `${normalizeText(description)}||${normalizeText(techStack)}`;
+  return createHash("sha256").update(normalizedInput).digest("hex");
 }
 
 function getLocalCachedResult(cacheKey: string): AiResult[] | null {
@@ -313,6 +325,10 @@ function getLocalCachedResult(cacheKey: string): AiResult[] | null {
 }
 
 function setLocalCachedResult(cacheKey: string, results: AiResult[]): void {
+  if (resultCache.size >= LOCAL_CACHE_MAX_ENTRIES && !resultCache.has(cacheKey)) {
+    const oldestKey = resultCache.keys().next().value;
+    if (oldestKey) resultCache.delete(oldestKey);
+  }
   resultCache.set(cacheKey, {
     results,
     expiresAt: Date.now() + RESULT_CACHE_TTL_MS,
@@ -911,8 +927,13 @@ async function requestOpenAiResults(
   techStack: string,
   context: string
 ): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+
+  try {
   const response = await fetch(OPENAI_API_URL, {
     method: "POST",
+    signal: controller.signal,
     headers: {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "Content-Type": "application/json",
@@ -972,6 +993,9 @@ Output format:
 
   const firstChoice = (data as { choices: Array<{ message?: { content?: unknown } }> }).choices[0];
   return typeof firstChoice?.message?.content === "string" ? firstChoice.message.content : null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function POST(req: Request) {

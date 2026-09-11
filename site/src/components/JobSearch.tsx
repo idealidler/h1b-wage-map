@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, KeyboardEvent } from "react";
 import { Search, X, Loader2 } from "lucide-react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Job { code: string; base_soc: string; title: string; }
 
@@ -40,12 +40,15 @@ export default function JobSearch({
   const listboxId = "soc-job-search-results";
 
   useEffect(() => {
-    setIsLoading(true);
     fetch("/soc_data.json").then((res) => res.json()).then((data: Job[]) => setJobs(data))
-      .catch((err) => console.error("Failed to load SOC data:", err)).finally(() => setIsLoading(false));
+      .catch(() => console.error("Failed to load SOC data")).finally(() => setIsLoading(false));
   }, []);
 
-  useEffect(() => { if (initialValue) setQuery(initialValue); }, [initialValue]);
+  useEffect(() => {
+    if (!initialValue) return;
+    const syncTimer = setTimeout(() => setQuery(initialValue), 0);
+    return () => clearTimeout(syncTimer);
+  }, [initialValue]);
 
   const filtered = useMemo(() => {
     if (debouncedQuery.length < 2 || debouncedQuery === initialValue) return [];
@@ -62,8 +65,11 @@ export default function JobSearch({
   }, [debouncedQuery, jobs, initialValue]);
 
   useEffect(() => {
-    setIsOpen(query.trim().length >= 2 && query !== initialValue);
-    setActiveIndex(-1);
+    const syncTimer = setTimeout(() => {
+      setIsOpen(query.trim().length >= 2 && query !== initialValue);
+      setActiveIndex(-1);
+    }, 0);
+    return () => clearTimeout(syncTimer);
   }, [query, initialValue]);
 
   useEffect(() => {
@@ -106,7 +112,7 @@ export default function JobSearch({
   };
 
   return (
-    <div className="relative w-full z-[100]" ref={wrapperRef}>
+    <div className={`relative w-full ${isOpen ? "z-30" : "z-0"}`} ref={wrapperRef}>
       <div className="relative group">
         {isLoading ? (
           <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--foreground-muted)] animate-spin" />
@@ -120,9 +126,10 @@ export default function JobSearch({
           aria-expanded={isOpen}
           aria-controls={listboxId}
           aria-autocomplete="list"
+          aria-busy={isLoading}
           aria-describedby={ariaDescribedBy}
-          placeholder="Search by role or SOC code (e.g. Software Developers)"
-          className="w-full pl-12 pr-11 py-3.5 min-h-[52px] border border-[var(--border-subtle)] rounded-2xl bg-white shadow-sm focus:ring-4 focus:ring-[var(--ring-subtle)] focus:border-[var(--brand-primary)] focus:outline-none text-[15px] text-[var(--foreground)] transition-all duration-300 font-medium placeholder:text-[var(--foreground-muted)]"
+          placeholder="Search occupation or SOC code"
+          className="w-full pl-12 pr-11 py-3.5 min-h-[52px] border border-[var(--border-subtle)] rounded-2xl bg-white shadow-[0_2px_8px_rgba(15,23,42,0.04)] focus:ring-4 focus:ring-[var(--ring-subtle)] focus:border-[var(--brand-primary)] focus:outline-none text-[17px] text-[var(--foreground)] transition-all duration-300 font-bold placeholder:text-[var(--foreground-muted)] placeholder:font-medium"
           value={query} 
           onChange={(e) => setQuery(e.target.value)} 
           onKeyDown={handleKeyDown} 
@@ -187,7 +194,7 @@ export default function JobSearch({
               </>
             ) : (
               <li className="px-4 py-6 text-sm text-[var(--foreground-muted)] text-center font-medium">
-                No matches found. Try <span className="text-[var(--foreground)]">"software"</span> or <span className="text-[var(--foreground)]">"analyst"</span>.
+                No matches found. Try <span className="text-[var(--foreground)]">&quot;software&quot;</span> or <span className="text-[var(--foreground)]">&quot;analyst&quot;</span>.
               </li>
             )}
           </motion.ul>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Map as MapIcon, Sparkles, Building2, CircleHelp, Menu } from "lucide-react";
-import { motion, Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 const navItems = [
@@ -41,9 +41,12 @@ export default function Navbar() {
     // Strict sync on mount and pathname change
     if (pathname === "/") {
         handleScroll();
-        if (window.location.hash) setActiveHash(window.location.hash);
+        if (window.location.hash) {
+          const hash = window.location.hash;
+          setTimeout(() => setActiveHash(hash), 0);
+        }
     } else {
-        setActiveHash(""); // Instantly clear hash highlight if not on home page
+      setTimeout(() => setActiveHash(""), 0); // Instantly clear hash highlight if not on home page
     }
 
     return () => {
@@ -71,7 +74,7 @@ export default function Navbar() {
   return (
     <nav
       aria-label="Primary"
-      className="sticky top-0 z-[100] w-full border-b border-[var(--border-subtle)] bg-white/60 backdrop-blur-xl transition-all"
+      className="sticky top-0 z-[100] w-full border-b border-[var(--border-subtle)] bg-white/80 backdrop-blur-xl transition-all"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         
@@ -79,7 +82,7 @@ export default function Navbar() {
         <Link
           href="/"
           onClick={() => setActiveHash("")}
-          className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] rounded-lg"
+          className="flex items-center gap-2.5 group rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
           title="Interactive Salary Explorer"
         >
           <div className="bg-[var(--foreground)] p-1.5 rounded-lg shadow-[0_2px_10px_rgba(15,23,42,0.2)] group-hover:scale-105 transition-transform duration-300">

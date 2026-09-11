@@ -1,18 +1,18 @@
-# H-1B Wage Map & Intelligence Tool (FY 2027) 🇺🇸
+# H-1B Wage Map & Intelligence Tool 🇺🇸
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Status](https://img.shields.io/badge/Status-Production-green)
 
-An interactive geospatial intelligence tool designed to help H-1B applicants navigate the new **FY 2027 Weighted Selection Rule**. It combines official Department of Labor (DOL) wage data with a massive database of historical company filings.
+An interactive geospatial intelligence tool designed to help H-1B applicants understand wage levels and employer filing patterns. It combines official Department of Labor (DOL) wage data with a massive database of historical company filings.
 
 **[🔴 Live Demo](https://h1b-wage-map.vercel.app)**
 
 <img width="2880" height="1800" alt="App Screenshot" src="https://github.com/user-attachments/assets/0e49c694-55f2-467c-900c-65150a77a682" />
 
-## 🧐 The Context (FY 2027 Rule Change)
-Starting March 2026, the US Department of Homeland Security (DHS) is shifting the H-1B lottery from a random selection to a **Wage-Level Weighted Selection**.
+## 🧐 The Context (Wage-Level Selection)
+The US Department of Homeland Security (DHS) is shifting the H-1B lottery from a random selection to a **Wage-Level Weighted Selection**.
 * **Level 4 (Senior)** roles will have significantly higher odds (+107%).
 * **Level 1 (Entry)** roles will have significantly lower odds (-48%).
 
@@ -102,8 +102,8 @@ To render 3,000+ counties instantly:
 
 **This tool is for informational purposes only and does not constitute legal advice.**
 
-* **Wage Data:** Official US Department of Labor (DOL) FLC Data Center.
-    * *Current Dataset:* **July 2025 – June 2026** (Active Cycle).
+* **Wage Data:** Official U.S. Department of Labor OFLC FLC Data Center.
+    * *Reference Dataset:* **OFLC data series 07/2026 - 06/2027**.
 * **LCA Data:** OFLC Historical Disclosure Data (FY 2022 – 2025).
 * **Data Updates:**
     * Wage Levels: Updated Annually (July).

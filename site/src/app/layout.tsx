@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 
-const inter = Inter({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 // --- SEO CONFIGURATION ---
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.wagelevelh1b.com"),
   title: {
-    default: "H-1B Wage Level Map FY 2027 | Prevailing Wages by County",
+    default: "H-1B Wage Map | OFLC Data Series 07/2026 - 06/2027",
     template: "%s | H1B Wage Map",
   },
 
   description:
-    "Interactive H-1B wage level map using official U.S. Department of Labor data. Find SOC codes, compare prevailing wage levels (L1-L4), and check county data for FY 2027.",
+    "Interactive H-1B wage map using the latest published U.S. Department of Labor OFLC reference data series for July 2026 through June 2027.",
 
   alternates: {
     canonical: "/",
@@ -29,14 +30,14 @@ export const metadata: Metadata = {
     "H-1B prevailing wage",
     "SOC code finder",
     "LCA employer filings",
-    "FY 2027 H1B",
+    "OFLC wage data 2026 2027",
     "county prevailing wage",
   ],
 
   openGraph: {
-    title: "H-1B Wage Level Map FY 2027",
+    title: "H-1B Wage Map | OFLC Data Series 07/2026 - 06/2027",
     description:
-      "Find SOC codes and explore county-level prevailing wage levels (L1-L4) with official Department of Labor data.",
+      "Find SOC codes and explore county-level prevailing wage levels from U.S. Department of Labor OFLC Wage Year 2026-27 data.",
     url: "https://www.wagelevelh1b.com",
     siteName: "H1B Wage Map",
     locale: "en_US",
@@ -53,7 +54,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "H-1B Wage Level Map FY 2027",
+    title: "H-1B Wage Map | OFLC Data Series 07/2026 - 06/2027",
     description:
       "Explore official county-level prevailing wages, find SOC codes, and compare wage levels.",
   },
@@ -93,7 +94,7 @@ export default function RootLayout({
       },
       {
         "@type": "SoftwareApplication",
-        name: "H1B Wage Level Map FY 2027",
+        name: "H1B Wage Map | OFLC Data Series 07/2026 - 06/2027",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         offers: {
@@ -102,7 +103,7 @@ export default function RootLayout({
           priceCurrency: "USD",
         },
         description:
-          "An interactive tool to explore H-1B prevailing wage levels by county, find SOC codes, and review FY 2027 rule references using official Department of Labor data.",
+          "An interactive H-1B wage map using official Department of Labor OFLC reference data from July 2026 through June 2027.",
         author: {
           "@type": "Person",
           name: "Akshay Jain",
@@ -114,7 +115,10 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${geist.variable} ${geistMono.variable}`}>
+        <a className="skip-link" href="#main-content">
+          Skip to main content
+        </a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

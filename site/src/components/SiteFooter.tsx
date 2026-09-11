@@ -9,7 +9,8 @@ export default function SiteFooter() {
         
         {/* Disclaimers & Contact */}
         <div className="text-center md:text-left space-y-1">
-          <p className="text-sm text-slate-600 font-medium">Official wage data from U.S. Department of Labor.</p>
+          <p className="text-sm text-slate-600 font-medium">Reference data from the U.S. Department of Labor OFLC.</p>
+          <p className="text-xs text-slate-500">Data series: 07/2026 - 06/2027. Verify current DOL guidance before filing.</p>
           <p className="text-xs text-slate-500">Not legal advice. For informational purposes only.</p>
           <p className="text-xs text-slate-500 pt-1.5">
             If this helped, I would love to hear from you. Drop me a note on{" "}

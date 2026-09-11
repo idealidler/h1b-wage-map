@@ -19,6 +19,7 @@ __pycache__/
 # --- DATA PIPELINE (HEAVY FILES) ---
 # Ignore the folder where you keep the 2GB of Excel files
 data-pipeline/raw_data/
+data-pipeline/raw_data_26_27/
 
 # Ignore all Excel files everywhere (Safety net)
 *.xlsx
