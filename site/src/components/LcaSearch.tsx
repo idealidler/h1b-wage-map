@@ -3,10 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  ArrowUpRight,
+  BarChart3,
   Briefcase,
   Building2,
+  CalendarDays,
   ChevronDown,
   ChevronRight,
+  Database,
+  FileSearch,
+  ListFilter,
   Loader2,
   Search,
   SlidersHorizontal,
@@ -292,300 +298,322 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
   };
 
   return (
-    <section className="w-full space-y-6 animate-in fade-in duration-500" aria-label="Employer LCA research">
+    <section className="w-full animate-in fade-in duration-500" aria-label="Employer LCA research">
       {!selectedCompany ? (
-        <div className="mx-auto max-w-3xl space-y-5">
-          <div className="flex flex-col gap-3 rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--background-alt)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">Historical LCA index</p>
-              <p className="mt-1 text-sm font-medium leading-6 text-[var(--foreground-muted)]">Search an employer to see the role titles and SOC codes used in certified filings.</p>
-            </div>
-            <span className="shrink-0 font-mono text-xs font-bold text-[var(--foreground-muted)]">2022 - 2025</span>
-          </div>
-          <div className="relative group" ref={searchContainerRef}>
-            <label htmlFor={inputId} className="mb-2 block text-sm font-bold text-[var(--foreground)]">Search employer name</label>
-            <div
-              className={`relative flex items-center rounded-[var(--radius-control)] border bg-[var(--surface-raised)] transition-all duration-300 overflow-hidden shadow-[var(--shadow-surface)] ${
-                spotlight
-                  ? "border-[var(--brand-primary)] ring-4 ring-[var(--ring-subtle)]"
-                  : "border-[var(--border-subtle)] focus-within:border-[var(--brand-primary)] focus-within:ring-4 focus-within:ring-[var(--ring-subtle)]"
-              }`}
-            >
-              <div className="ml-4 shrink-0 flex items-center justify-center w-5 h-5">
-                {isSearchingCompanies ? (
-                  <Loader2 className="w-5 h-5 text-[var(--brand-primary)] animate-spin" />
-                ) : (
-                  <Search className="w-5 h-5 text-[var(--foreground-muted)] group-focus-within:text-[var(--brand-primary)] transition-colors" />
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="space-y-4">
+            <div className="relative group" ref={searchContainerRef} role="search">
+              <label htmlFor={inputId} className="mb-2 block text-sm font-bold text-[var(--foreground)]">Company name</label>
+              <div
+                className={`relative flex items-center overflow-hidden rounded-[var(--radius-control)] border bg-white transition-all duration-300 shadow-[var(--shadow-surface)] ${
+                  spotlight
+                    ? "border-[var(--brand-primary)] ring-4 ring-[var(--ring-subtle)]"
+                    : "border-[var(--border-subtle)] focus-within:border-[var(--brand-primary)] focus-within:ring-4 focus-within:ring-[var(--ring-subtle)]"
+                }`}
+              >
+                <div className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-primary-muted)]">
+                  {isSearchingCompanies ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-primary)]" />
+                  ) : (
+                    <Search className="h-5 w-5 text-[var(--brand-primary)]" />
+                  )}
+                </div>
+
+                <input
+                  id={inputId}
+                  ref={companyInputRef}
+                  type="text"
+                  role="combobox"
+                  aria-expanded={isDropdownOpen}
+                  aria-controls={companyListboxId}
+                  aria-autocomplete="list"
+                  aria-busy={isSearchingCompanies}
+                  aria-activedescendant={activeCompanyIndex >= 0 ? `company-option-${activeCompanyIndex}` : undefined}
+                  value={companySearch}
+                  onChange={(e) => setCompanySearch(e.target.value)}
+                  onFocus={() => setIsCompanyInputFocused(true)}
+                  onKeyDown={handleCompanyKeyDown}
+                  placeholder="Try Google, Deloitte, Microsoft..."
+                  className="min-h-[64px] w-full border-0 bg-transparent px-3 py-4 text-base font-semibold text-[var(--foreground)] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-[var(--foreground-muted)]"
+                />
+
+                {companySearch && (
+                  <button
+                    type="button"
+                    onClick={clearCompanySearch}
+                    className="mr-3 rounded-full p-2 text-[var(--foreground-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                    aria-label="Clear employer search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 )}
               </div>
 
-              <input
-                id={inputId}
-                ref={companyInputRef}
-                type="text"
-                role="combobox"
-                aria-expanded={isDropdownOpen}
-                aria-controls={companyListboxId}
-                aria-autocomplete="list"
-                aria-busy={isSearchingCompanies}
-                aria-activedescendant={activeCompanyIndex >= 0 ? `company-option-${activeCompanyIndex}` : undefined}
-                value={companySearch}
-                onChange={(e) => setCompanySearch(e.target.value)}
-                onFocus={() => setIsCompanyInputFocused(true)}
-                onKeyDown={handleCompanyKeyDown}
-                placeholder="Search employer (e.g. Google, Deloitte, Microsoft)"
-                className="w-full min-h-[56px] border-0 bg-transparent px-3 py-4 text-[15px] font-medium text-[var(--foreground)] outline-none focus:ring-0 placeholder:text-[var(--foreground-muted)]"
-              />
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <motion.ul
+                    initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.15 } }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    id={companyListboxId}
+                    role="listbox"
+                    className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[360px] overflow-y-auto rounded-2xl border border-[var(--border-subtle)] bg-white/95 p-1.5 shadow-lg backdrop-blur-xl"
+                  >
+                    {isSearchingCompanies && (
+                      <li className="flex items-center gap-2 px-4 py-5 text-sm font-medium text-[var(--foreground-muted)]" role="status">
+                        <Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" />
+                        Loading employer records...
+                      </li>
+                    )}
+                    {filteredCompanies.length > 0 && !isSearchingCompanies && (
+                      <li className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)]">
+                        Matching employers
+                      </li>
+                    )}
+                    {filteredCompanies.map((company, index) => (
+                      <li key={company.name} id={`company-option-${index}`} role="option" aria-selected={activeCompanyIndex === index}>
+                        <button
+                          type="button"
+                          onClick={() => openCompany(company.name)}
+                          className={`group flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 ${activeCompanyIndex === index ? "bg-[var(--brand-primary-muted)]" : "hover:bg-[var(--surface-muted)]"}`}
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <Building2 className="h-5 w-5 shrink-0 text-[var(--foreground-muted)] transition-colors group-hover:text-[var(--brand-primary)]" />
+                            <div className="min-w-0">
+                              <span className="block truncate text-[15px] font-bold text-[var(--foreground)] transition-colors group-hover:text-[var(--brand-primary)]">
+                                {company.name}
+                              </span>
+                              <span className="text-xs font-medium text-[var(--foreground-muted)]">
+                                {company.filings.toLocaleString()} certified filings
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-[var(--foreground-muted)] transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-primary)]" />
+                        </button>
+                      </li>
+                    ))}
 
-              {companySearch && (
-                <button
-                  type="button"
-                  onClick={clearCompanySearch}
-                  className="mr-3 p-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-full transition-colors"
-                  aria-label="Clear employer search"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+                    {filteredCompanies.length === 0 && normalizedCompanySearch.length >= 2 && !isSearchingCompanies && (
+                      <li className="px-4 py-6 text-center text-sm font-medium text-[var(--foreground-muted)]">
+                        {companyError ?? "No company matches found. Try a shorter or broader employer name."}
+                      </li>
+                    )}
+                  </motion.ul>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Framer Motion Dropdown */}
-            <AnimatePresence>
-              {isDropdownOpen && (
-                <motion.ul
-                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.15 } }}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  id={companyListboxId}
-                  role="listbox"
-                  className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl border border-[var(--border-subtle)] rounded-2xl shadow-lg z-50 overflow-hidden p-1.5 flex flex-col gap-0.5"
-                >
-                  {isSearchingCompanies && (
-                    <li className="flex items-center gap-2 px-4 py-5 text-sm font-medium text-[var(--foreground-muted)]" role="status">
-                      <Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" />
-                      Loading employer records...
-                    </li>
-                  )}
-                  {filteredCompanies.length > 0 && !isSearchingCompanies && (
-                    <li className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)] ml-1">
-                      Matching employers · use arrow keys to choose
-                    </li>
-                  )}
-                  {filteredCompanies.map((company, index) => (
-                    <li key={company.name} id={`company-option-${index}`} role="option" aria-selected={activeCompanyIndex === index}>
-                      <button
-                        type="button"
-                        onClick={() => openCompany(company.name)}
-                        className={`group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-all duration-200 ${activeCompanyIndex === index ? "bg-[var(--brand-primary-muted)]" : "hover:bg-[var(--surface-muted)]"}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Building2 className="w-5 h-5 text-[var(--foreground-muted)] group-hover:text-[var(--brand-primary)] transition-colors" />
-                          <div>
-                            <span className="font-semibold text-[var(--foreground)] block group-hover:text-[var(--brand-primary)] transition-colors text-[15px]">
-                              {company.name}
-                            </span>
-                            <span className="text-xs text-[var(--foreground-muted)]">
-                              {company.filings.toLocaleString()} certified filings
-                            </span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-[var(--foreground-muted)] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[var(--brand-primary)] transition-all duration-300" />
-                      </button>
-                    </li>
-                  ))}
-
-                  {filteredCompanies.length === 0 && normalizedCompanySearch.length >= 2 && !isSearchingCompanies && (
-                    <li className="px-4 py-6 text-sm text-center text-[var(--foreground-muted)] font-medium">
-                      {companyError ?? "No company matches found. Try a broader search."}
-                    </li>
-                  )}
-                </motion.ul>
-              )}
-            </AnimatePresence>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { icon: Database, title: "Certified LCA records", body: "Searches historical employer filings, not guessed job categories." },
+                { icon: Briefcase, title: "Role title matching", body: "Groups the job titles an employer has used in filings." },
+                { icon: FileSearch, title: "SOC evidence", body: "Shows each SOC code, filing count, and filing years." },
+              ].map((item) => (
+                <div key={item.title} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--background-alt)] p-4">
+                  <item.icon className="h-5 w-5 text-[var(--brand-primary)]" aria-hidden="true" />
+                  <p className="mt-3 text-sm font-bold leading-tight text-[var(--foreground)]">{item.title}</p>
+                  <p className="mt-1 text-xs font-medium leading-5 text-[var(--foreground-muted)]">{item.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
+
+          <aside className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--background-alt)] p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">What you will see</p>
+            <div className="mt-4 space-y-3">
+              {[
+                ["Employer filing volume", "How much certified LCA history is available."],
+                ["Job titles filed", "The exact titles that appeared in records."],
+                ["SOC mapping mix", "Where a role was mapped when filings varied."],
+                ["Filing years", "Recent years represented in the source data."],
+              ].map(([title, body]) => (
+                <div key={title} className="border-t border-[var(--border-subtle)] pt-3 first:border-t-0 first:pt-0">
+                  <p className="text-sm font-bold text-[var(--foreground)]">{title}</p>
+                  <p className="text-xs font-medium leading-5 text-[var(--foreground-muted)]">{body}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
         </div>
       ) : (
-        <div className="space-y-4 max-w-5xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
-          
-          {/* Company Header Card */}
-          <div className="sticky top-2 z-20 rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-floating)] p-5 shadow-[var(--shadow-floating)] backdrop-blur-xl transition-all sm:p-6">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCompany("");
-                setTitleSearch("");
-                setExpandedJob(null);
-              }}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-primary)] hover:text-[var(--brand-primary-hover)] transition-colors mb-4 group"
-            >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-              Back to Employer Search
-            </button>
-
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-              <div>
-                <h2 className="text-3xl font-bold text-[var(--foreground)] tracking-tight">{selectedCompany}</h2>
-                <p className="mt-1.5 max-w-xl font-medium leading-6 text-[var(--foreground-muted)]">
-                  Review the roles this employer has filed, then choose the SOC mapping that best matches your position.
+        <div className="mx-auto max-w-6xl animate-in slide-in-from-bottom-4 space-y-4 duration-500">
+          <div className="sticky top-2 z-20 rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-floating)] p-4 shadow-[var(--shadow-floating)] backdrop-blur-xl sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCompany("");
+                    setTitleSearch("");
+                    setExpandedJob(null);
+                  }}
+                  className="group mb-3 inline-flex items-center gap-1.5 text-sm font-bold text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+                >
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+                  Change company
+                </button>
+                <h3 className="truncate text-2xl font-bold tracking-tight text-[var(--foreground)] sm:text-3xl">{selectedCompany}</h3>
+                <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-[var(--foreground-muted)]">
+                  Compare role titles this employer filed and pick the SOC mapping that best matches your position.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:min-w-[420px] sm:grid-cols-3">
-                <div className="rounded-xl bg-[var(--surface-muted)] px-4 py-3.5 text-center border border-[var(--border-subtle)]">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--foreground-muted)]">Total Filings</p>
-                  <p className="text-2xl font-bold text-[var(--foreground)] mt-1">{companyStats?.totalFilings.toLocaleString()}</p>
-                </div>
-                <div className="rounded-xl bg-[var(--surface-muted)] px-4 py-3.5 text-center border border-[var(--border-subtle)]">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--foreground-muted)]">Unique Roles</p>
-                  <p className="text-2xl font-bold text-[var(--foreground)] mt-1">{companyStats?.uniqueRoles.toLocaleString()}</p>
-                </div>
-                <div className="col-span-2 rounded-xl bg-[var(--surface-muted)] px-4 py-3.5 text-center border border-[var(--border-subtle)] sm:col-span-1">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--foreground-muted)]">Coverage</p>
-                  <p className="text-lg font-bold text-[var(--foreground)] mt-1">{companyStats?.coverageYears}</p>
-                </div>
+              <div className="grid grid-cols-3 gap-2 lg:min-w-[430px]">
+                {[
+                  { label: "Filings", value: companyStats?.totalFilings.toLocaleString(), icon: BarChart3 },
+                  { label: "Roles", value: companyStats?.uniqueRoles.toLocaleString(), icon: Briefcase },
+                  { label: "Years", value: companyStats?.coverageYears, icon: CalendarDays },
+                ].map((stat) => (
+                  <div key={stat.label} className="rounded-xl border border-[var(--border-subtle)] bg-white px-3 py-3">
+                    <stat.icon className="h-4 w-4 text-[var(--brand-primary)]" aria-hidden="true" />
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)]">{stat.label}</p>
+                    <p className="mt-0.5 truncate text-lg font-bold text-[var(--foreground)]">{stat.value}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Filtering Toolbar */}
-          <div className="rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-4 space-y-4 shadow-[var(--shadow-surface)]" aria-label="Employer role filters">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
-              <div className="relative group">
-                <div className="relative flex items-center bg-[var(--background-alt)] rounded-xl border border-transparent focus-within:border-[var(--brand-primary)] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--ring-subtle)] transition-all duration-300 overflow-hidden">
-                  <Search className="w-5 h-5 text-[var(--foreground-muted)] ml-4 shrink-0 group-focus-within:text-[var(--brand-primary)] transition-colors" />
+          <div className="rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-[var(--background-alt)] p-3 sm:p-4" aria-label="Employer role filters">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
+              <label className="relative group block">
+                <span className="sr-only">Filter role titles</span>
+                <div className="relative flex items-center overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-white transition-all duration-300 focus-within:border-[var(--brand-primary)] focus-within:ring-4 focus-within:ring-[var(--ring-subtle)]">
+                  <Search className="ml-4 h-5 w-5 shrink-0 text-[var(--foreground-muted)] transition-colors group-focus-within:text-[var(--brand-primary)]" />
                   <input
                     type="text"
                     value={titleSearch}
                     onChange={(e) => setTitleSearch(e.target.value)}
-                    placeholder="Filter role titles..."
-                    className="w-full py-3 px-3 bg-transparent border-0 outline-none focus:ring-0 font-medium text-[var(--foreground)] transition-all placeholder:text-[var(--foreground-muted)]"
+                    placeholder="Filter by role title, for example Software Engineer"
+                    className="min-h-12 w-full border-0 bg-transparent px-3 py-3 text-sm font-semibold text-[var(--foreground)] outline-none focus:ring-0 placeholder:text-[var(--foreground-muted)]"
                   />
                   {titleSearch && (
                     <button
                       type="button"
                       onClick={() => setTitleSearch("")}
-                      className="mr-3 p-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)] rounded-full transition-colors"
+                      className="mr-3 rounded-full p-1.5 text-[var(--foreground-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                      aria-label="Clear role title filter"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
-              </div>
+              </label>
 
-              <div className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] px-3 py-2.5 bg-[var(--background-alt)] hover:bg-[var(--surface-muted)] transition-colors cursor-pointer">
-                <SlidersHorizontal className="w-4 h-4 text-[var(--foreground-muted)]" />
+              <label className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-white px-3">
+                <SlidersHorizontal className="h-4 w-4 text-[var(--foreground-muted)]" />
+                <span className="sr-only">Sort titles</span>
                 <select
                   value={sortMode}
                   onChange={(e) => setSortMode(e.target.value as SortMode)}
-                  className="text-sm font-semibold text-[var(--foreground)] bg-transparent outline-none cursor-pointer"
+                  className="bg-transparent text-sm font-bold text-[var(--foreground)] outline-none"
                   aria-label="Sort titles"
                 >
-                  <option value="filings">Sort: Highest filings</option>
-                  <option value="alphabetical">Sort: Alphabetical</option>
+                  <option value="filings">Highest filings</option>
+                  <option value="alphabetical">Alphabetical</option>
                 </select>
-              </div>
+              </label>
 
-              <p className="justify-self-end px-2 text-sm font-medium text-[var(--foreground-muted)]" aria-live="polite">
-                {preparedTitles.length.toLocaleString()} matching role{preparedTitles.length !== 1 ? "s" : ""}
+              <p className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-white px-3 text-sm font-bold text-[var(--foreground-muted)]" aria-live="polite">
+                <ListFilter className="h-4 w-4" aria-hidden="true" />
+                {preparedTitles.length.toLocaleString()} role{preparedTitles.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
 
-          {/* Role List Accordion */}
-          <div className="space-y-3" aria-live="polite">
+          <div className="overflow-hidden rounded-[var(--radius-surface)] border border-[var(--border-subtle)] bg-white" aria-live="polite">
+            <div className="hidden grid-cols-[minmax(0,1fr)_150px_150px_44px] gap-4 border-b border-[var(--border-subtle)] bg-[var(--background-alt)] px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-[var(--foreground-muted)] md:grid">
+              <span>Role title</span>
+              <span>Likely SOC</span>
+              <span>Filings</span>
+              <span className="sr-only">Expand</span>
+            </div>
+
             {visibleTitles.map((item) => {
               const isExpanded = expandedJob === item.title;
               return (
-                <div
-                  key={item.title}
-                  className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
-                    isExpanded
-                      ? "border-[var(--brand-primary)] bg-white shadow-[0_8px_30px_rgba(37,99,235,0.06)] ring-1 ring-[var(--brand-primary)]"
-                      : "border-[var(--border-subtle)] bg-[var(--background)] hover:border-slate-300 hover:shadow-sm"
-                  }`}
-                >
+                <div key={item.title} className="border-b border-[var(--border-subtle)] last:border-b-0">
                   <button
                     type="button"
                     onClick={() => setExpandedJob(isExpanded ? null : item.title)}
-                    className="w-full p-5 text-left group outline-none"
+                    className={`group grid w-full gap-3 px-4 py-4 text-left transition-colors md:grid-cols-[minmax(0,1fr)_150px_150px_44px] md:items-center ${isExpanded ? "bg-[var(--brand-primary-muted)]" : "hover:bg-[var(--background-alt)]"}`}
+                    aria-expanded={isExpanded}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-2.5 rounded-xl border transition-colors ${isExpanded ? 'bg-[var(--brand-primary-muted)] border-[var(--brand-primary-muted)] text-[var(--brand-primary)]' : 'border-[var(--border-subtle)] bg-[var(--surface-muted)] text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] group-hover:bg-white'}`}>
-                          <Briefcase className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-[var(--foreground)] text-base sm:text-lg leading-tight">{item.title}</h3>
-                          <p className="text-sm text-[var(--foreground-muted)] mt-1 font-medium">
-                            Commonly mapped to <span className="text-[var(--foreground)] font-semibold">{formatSocCode(item.primaryOption.s)}</span> ({item.dominancePct.toFixed(0)}%)
+                    <div className="min-w-0">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-white text-[var(--foreground-muted)]">
+                          <Briefcase className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <h4 className="break-words text-base font-bold leading-tight text-[var(--foreground)]">{item.title}</h4>
+                          <p className="mt-1 text-xs font-medium leading-5 text-[var(--foreground-muted)]">
+                            Primary mapping confidence: <span className="font-bold text-[var(--foreground)]">{item.dominancePct.toFixed(0)}%</span>
                           </p>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-4 mt-2 sm:mt-0">
-                        <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-[var(--surface-muted)] border border-[var(--border-subtle)] text-[var(--foreground-muted)]">
-                          {item.totalFilings.toLocaleString()} filings
-                        </span>
-                        <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? "rotate-180 text-[var(--brand-primary)]" : "text-[var(--foreground-muted)] group-hover:text-[var(--foreground)]"}`} />
-                      </div>
                     </div>
+                    <span className="w-fit rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-1 font-mono text-xs font-bold text-[var(--foreground)]">
+                      {formatSocCode(item.primaryOption.s)}
+                    </span>
+                    <span className="text-sm font-bold text-[var(--foreground-muted)]">
+                      {item.totalFilings.toLocaleString()} filing{item.totalFilings !== 1 ? "s" : ""}
+                    </span>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[var(--foreground-muted)] transition-colors group-hover:text-[var(--brand-primary)]">
+                      <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? "rotate-180 text-[var(--brand-primary)]" : ""}`} aria-hidden="true" />
+                    </span>
                   </button>
 
-                  {/* Framer Motion Fluid Height Accordion */}
                   <AnimatePresence initial={false}>
                     {isExpanded && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                        transition={{ duration: 0.25, ease: [0.04, 0.62, 0.23, 0.98] }}
                       >
-                        <div className="px-5 pb-5 pt-2">
-                          <div className="rounded-xl bg-[var(--background-alt)] border border-[var(--border-subtle)] p-4 space-y-3">
-                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                              <p className="ml-1 text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)]">Choose a SOC mapping</p>
-                              <p className="text-xs font-medium text-[var(--foreground-muted)]">Select a mapping to open the wage map</p>
-                            </div>
-
-                            {item.options.map((option, optionIndex) => (
-                              <button
-                                key={`${item.title}-${option.s}-${optionIndex}`}
-                                type="button"
-                                onClick={() => goToWageMap(option)}
-                                className="w-full rounded-xl bg-white p-4 text-left border border-[var(--border-subtle)] hover:border-[var(--brand-primary)] hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group/btn"
-                              >
-                                <div>
-                                  <div className="inline-flex items-center gap-2 mb-1.5">
-                                    <span className="bg-[var(--surface-muted)] text-[var(--foreground)] border border-[var(--border-subtle)] font-mono font-bold text-xs px-2.5 py-1 rounded-md">
-                                      SOC {formatSocCode(option.s)}
-                                    </span>
-                                    <span className="text-xs text-[var(--foreground-muted)] font-semibold">
-                                      {option.n.toLocaleString()} filings
-                                    </span>
-                                  </div>
-                                  <p className="text-sm sm:text-base font-bold text-[var(--foreground)] group-hover/btn:text-[var(--brand-primary)] transition-colors">{option.t}</p>
-                                  
-                                  {/* Year Tags */}
-                                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)] mr-1">Filed in</span>
-                                    {sortYearsDesc(option.y).map((year) => (
-                                      <span
-                                        key={`${option.s}-${option.t}-${year}`}
-                                        className="inline-flex items-center rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-semibold text-[var(--foreground-muted)]"
-                                      >
-                                        {year}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[var(--surface-muted)] text-[var(--foreground-muted)] group-hover/btn:bg-[var(--brand-primary)] group-hover/btn:text-white transition-all duration-300 shrink-0">
-                                  <ChevronRight className="w-5 h-5 group-hover/btn:translate-x-0.5 transition-transform" />
-                                </span>
-                              </button>
-                            ))}
+                        <div className="space-y-2 bg-[var(--background-alt)] px-4 pb-4 pt-1">
+                          <div className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--foreground-muted)]">SOC mappings filed for this title</p>
+                            <p className="text-xs font-medium text-[var(--foreground-muted)]">Choose one to compare wage levels</p>
                           </div>
+
+                          {item.options.map((option, optionIndex) => (
+                            <button
+                              key={`${item.title}-${option.s}-${optionIndex}`}
+                              type="button"
+                              onClick={() => goToWageMap(option)}
+                              className="group/option grid w-full gap-3 rounded-xl border border-[var(--border-subtle)] bg-white p-4 text-left transition-all duration-200 hover:border-[var(--brand-primary)] hover:shadow-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--foreground)]">
+                                    SOC {formatSocCode(option.s)}
+                                  </span>
+                                  <span className="text-xs font-bold text-[var(--foreground-muted)]">
+                                    {option.n.toLocaleString()} filing{option.n !== 1 ? "s" : ""}
+                                  </span>
+                                </div>
+                                <p className="mt-2 break-words text-sm font-bold leading-5 text-[var(--foreground)] transition-colors group-hover/option:text-[var(--brand-primary)] sm:text-[15px]">{option.t}</p>
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)]">Years</span>
+                                  {sortYearsDesc(option.y).map((year) => (
+                                    <span
+                                      key={`${option.s}-${option.t}-${year}`}
+                                      className="inline-flex items-center rounded-md border border-[var(--border-subtle)] bg-[var(--background-alt)] px-2 py-0.5 text-[11px] font-semibold text-[var(--foreground-muted)]"
+                                    >
+                                      {year}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <span className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 text-sm font-bold text-white transition-colors group-hover/option:bg-[var(--brand-primary-hover)]">
+                                Open map
+                                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                              </span>
+                            </button>
+                          ))}
                         </div>
                       </motion.div>
                     )}
@@ -594,25 +622,28 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
               );
             })}
 
-            {hasMoreTitles && (
-              <div className="flex justify-center pt-4">
-                <button
-                  type="button"
-                  onClick={() => setVisibleCount((prev) => prev + 8)}
-                  className="btn-secondary !rounded-full !px-8"
-                >
-                  Show More Roles
-                </button>
-              </div>
-            )}
-
             {preparedTitles.length === 0 && (
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--background-alt)] px-4 py-12 text-center text-[var(--foreground-muted)] font-medium">
-                <Search className="w-8 h-8 mx-auto text-[var(--border-strong)] mb-3" />
-                No role titles match &quot;<span className="font-semibold text-[var(--foreground)]">{titleSearch}</span>&quot;. Try a broader title or clear the filter.
+              <div className="px-4 py-12 text-center">
+                <Search className="mx-auto h-9 w-9 text-[var(--border-strong)]" aria-hidden="true" />
+                <p className="mt-3 text-sm font-bold text-[var(--foreground)]">No matching role titles</p>
+                <p className="mx-auto mt-1 max-w-sm text-sm font-medium leading-6 text-[var(--foreground-muted)]">
+                  Nothing matched &quot;{titleSearch}&quot;. Clear the filter or try a shorter role keyword.
+                </p>
               </div>
             )}
           </div>
+
+          {hasMoreTitles && (
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => prev + 8)}
+                className="btn-secondary !rounded-full !px-8"
+              >
+                Show more roles
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

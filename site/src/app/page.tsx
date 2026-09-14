@@ -344,19 +344,31 @@ function WageMapContent() {
           id="find-soc-employer" 
           animate={employerSpotlight ? { scale: 1.02, y: -5 } : { scale: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className={`scroll-mt-32 mt-6 rounded-[var(--radius-surface)] border bg-[var(--surface-raised)] p-6 sm:p-8 transition-colors duration-700 ${
+          className={`scroll-mt-32 mt-6 rounded-[var(--radius-surface)] border bg-[var(--surface-raised)] p-5 sm:p-7 transition-colors duration-700 ${
             employerSpotlight 
               ? "border-[var(--brand-primary)] ring-4 ring-[var(--ring-subtle)] shadow-[0_16px_40px_rgba(37,99,235,0.12)] relative z-20" 
               : "border-[var(--border-subtle)] shadow-[0_2px_12px_rgba(15,23,42,0.03)] relative z-0"
           }`}
         >
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
-            <div>
+          <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">03 / Research employer patterns</p>
-              <h2 className="mt-1 text-2xl font-bold text-[var(--foreground)] tracking-tight">Find SOC code by employer filings</h2>
-              <p className="text-[15px] font-medium text-[var(--foreground-muted)] mt-1.5">
-                Search historical employer LCA filings to find the closest SOC code before opening the wage map.
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)] sm:text-3xl">Find the SOC code your employer actually used</h2>
+              <p className="mt-2 text-sm font-medium leading-6 text-[var(--foreground-muted)] sm:text-[15px]">
+                Enter a company name to review historical certified LCA filings by job title. Use the past SOC mappings as a practical reference before comparing wage levels on the map.
               </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--background-alt)] p-2 text-center sm:min-w-[360px]">
+              {[
+                ["1", "Search company"],
+                ["2", "Review roles"],
+                ["3", "Open map"],
+              ].map(([step, label]) => (
+                <div key={step} className="rounded-xl bg-white px-2 py-2.5">
+                  <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-[var(--brand-primary-muted)] text-xs font-bold text-[var(--brand-primary)]">{step}</span>
+                  <span className="mt-1 block text-[11px] font-bold leading-tight text-[var(--foreground-muted)]">{label}</span>
+                </div>
+              ))}
             </div>
           </div>
           <LcaSearch

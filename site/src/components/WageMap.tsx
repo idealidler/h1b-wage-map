@@ -4,11 +4,11 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl, MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import bbox from "@turf/bbox"; 
-import { ChevronDown, MapPin, Loader2, AlertCircle, ExternalLink, CheckCircle2, TrendingUp } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, MapPin, Loader2, AlertCircle, ExternalLink, CheckCircle2 } from "lucide-react";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-const GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
+const LOCAL_GEOJSON_URL = "/county-geometry-v1.geojson";
+const FALLBACK_GEOJSON_URL = "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json";
 const MAP_REQUEST_TIMEOUT_MS = 15_000;
 const FR_RULE_URL =
   "https://www.federalregister.gov/documents/2025/12/29/2025-23853/weighted-selection-process-for-registrants-and-petitioners-seeking-to-file-cap-subject-h-1b";
@@ -38,12 +38,51 @@ async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): P
   }
 }
 
+async function fetchJsonWithRetry<T>(url: string, errorMessage: string): Promise<T> {
+  const readJson = async (requestUrl: string, cache: RequestCache) => {
+    const response = await fetchWithTimeout(requestUrl, { cache });
+    if (!response.ok) throw new Error(errorMessage);
+    return (await response.json()) as T;
+  };
+
+  try {
+    return await readJson(url, "no-cache");
+  } catch {
+    const separator = url.includes("?") ? "&" : "?";
+    return readJson(`${url}${separator}retry=${Date.now()}`, "reload");
+  }
+}
+
+function isValidGeoJson(data: GeoJSON.FeatureCollection): boolean {
+  return (
+    data.type === "FeatureCollection" &&
+    Array.isArray(data.features) &&
+    data.features.length > 3000 &&
+    data.features.some((feature) => feature.id != null)
+  );
+}
+
 async function loadGeoJson(): Promise<GeoJSON.FeatureCollection> {
   if (cachedGeoJson) return cachedGeoJson;
   if (!geoJsonRequest) {
-    geoJsonRequest = fetchWithTimeout(GEOJSON_URL, { cache: "force-cache" }).then(async (response) => {
-      if (!response.ok) throw new Error("Failed to load map geometry");
-      const data = (await response.json()) as GeoJSON.FeatureCollection;
+    geoJsonRequest = Promise.resolve().then(async () => {
+      try {
+        const data = await fetchJsonWithRetry<GeoJSON.FeatureCollection>(
+          LOCAL_GEOJSON_URL,
+          "Failed to load map geometry"
+        );
+        if (!isValidGeoJson(data)) throw new Error("Failed to load map geometry");
+        cachedGeoJson = data;
+        return data;
+      } catch (localError) {
+        console.warn("Local map geometry failed to load; falling back to remote geometry.", localError);
+      }
+
+      const data = await fetchJsonWithRetry<GeoJSON.FeatureCollection>(
+        FALLBACK_GEOJSON_URL,
+        "Failed to load map geometry"
+      );
+      if (!isValidGeoJson(data)) throw new Error("Failed to load map geometry");
       cachedGeoJson = data;
       return data;
     }).catch((error) => {
@@ -60,10 +99,12 @@ async function loadWageData(baseSocCode: string): Promise<Record<string, WageDat
   const pending = wageDataRequests.get(baseSocCode);
   if (pending) return pending;
 
-  const request = fetchWithTimeout(`/jobs-2026-27/${baseSocCode}.json`, { cache: "force-cache" })
-    .then(async (response) => {
-      if (!response.ok) throw new Error("No wage data found");
-      const data = (await response.json()) as Record<string, WageData>;
+  const request = fetchJsonWithRetry<Record<string, WageData>>(
+    `/jobs-2026-27/${baseSocCode}.json`,
+    "No wage data found"
+  )
+    .then((data) => {
+      if (Object.keys(data).length === 0) throw new Error("No wage data found");
       wageDataCache.set(baseSocCode, data);
       return data;
     })
@@ -85,12 +126,6 @@ interface ActivePopupData {
   properties: WageFeatureProperties;
 }
 
-interface NextLevelInfo {
-  diff: number;
-  next: string;
-  nextOdds: string;
-}
-
 export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: string; jobTitle?: string; userSalary: number; }) {
   const mapRef = useRef<MapRef>(null);
   const [geoJson, setGeoJson] = useState<GeoJSON.FeatureCollection | null>(null);
@@ -100,6 +135,8 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "ready">("idle");
   const [selectedState, setSelectedState] = useState<string>("");
   const [selectedCountyFips, setSelectedCountyFips] = useState<string>("");
+  const [loadError, setLoadError] = useState<"geometry" | "wage" | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   const [debouncedSalary, setDebouncedSalary] = useState(userSalary);
   useEffect(() => {
@@ -113,6 +150,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
     const baseSocCode = socCode.split('.')[0];
     const cachedWageData = wageDataCache.get(baseSocCode);
     const statusTimer = setTimeout(() => {
+      setLoadError(null);
       setStatus(cachedWageData && cachedGeoJson ? "ready" : "loading");
     }, 0);
 
@@ -128,8 +166,11 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
           setWageMapData(wageData);
           setStatus("ready");
         }
-      } catch {
-        if (isMounted) setStatus("error");
+      } catch (error) {
+        if (isMounted) {
+          setLoadError(error instanceof Error && error.message.includes("geometry") ? "geometry" : "wage");
+          setStatus("error");
+        }
       }
     };
 
@@ -138,7 +179,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
       clearTimeout(statusTimer);
       isMounted = false;
     };
-  }, [socCode]);
+  }, [retryNonce, socCode]);
 
   const mergedData = useMemo(() => {
     if (!geoJson || Object.keys(wageMapData).length === 0) return null;
@@ -211,18 +252,7 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
       }
   };
 
-  const getNextLevelInfo = (props: WageFeatureProperties | undefined): NextLevelInfo | null => {
-      if (!props) return null;
-      const current = props.userLevel;
-      if (current === 0) return { diff: props.l1 - debouncedSalary, next: "Level 1", nextOdds: "~15%" };
-      if (current === 1) return { diff: props.l2 - debouncedSalary, next: "Level 2", nextOdds: "~30%" };
-      if (current === 2) return { diff: props.l3 - debouncedSalary, next: "Level 3", nextOdds: "~46%" };
-      if (current === 3) return { diff: props.l4 - debouncedSalary, next: "Level 4", nextOdds: "~61%" };
-      return null; 
-  };
-
   const activePopup = selectedInfo || hoverInfo;
-  const gapInfo = activePopup ? getNextLevelInfo(activePopup.properties) : null;
   const mapStatusMessage = status === "loading"
     ? "Updating wage data."
     : status === "error"
@@ -285,8 +315,17 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
         {status === "error" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-40 px-4 text-center backdrop-blur-md">
             <AlertCircle className="w-12 h-12 text-[var(--brand-accent)] mb-3" />
-            <p className="text-[var(--foreground)] font-bold text-lg">No wage data found</p>
-            <p className="text-sm text-[var(--foreground-muted)] mt-1.5 max-w-sm">Try selecting a broader role title or choose a nearby SOC option from the list.</p>
+            <p className="text-[var(--foreground)] font-bold text-lg">
+              {loadError === "geometry" ? "Map boundary data could not load" : "No wage data found"}
+            </p>
+            <p className="text-sm text-[var(--foreground-muted)] mt-1.5 max-w-sm">
+              {loadError === "geometry"
+                ? "Check your connection and try loading the map again."
+                : "Try selecting a broader role title or choose a nearby SOC option from the list."}
+            </p>
+            <button type="button" onClick={() => setRetryNonce((current) => current + 1)} className="btn-secondary mt-4 !min-h-10 !px-4 !py-2 text-sm">
+              Try again
+            </button>
           </div>
         )}
 
@@ -396,12 +435,11 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                             <div className="flex items-center justify-between mt-1">
                                 <span className="text-[13px] font-medium text-[var(--foreground-muted)]">{activePopup.properties.s}</span>
                                 <span className="text-[11px] bg-[var(--surface-muted)] px-2.5 py-1 rounded-md text-[var(--foreground)] font-mono font-bold border border-[var(--border-subtle)]">
-                                  Base: ${debouncedSalary.toLocaleString()}
+                                  Your Salary: ${debouncedSalary.toLocaleString()}
                                 </span>
                             </div>
                         </div>
 
-                        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Annual wage thresholds</p>
                         <div className="space-y-1.5">
                             <LevelRow level={4} amount={activePopup.properties.l4} activeLevel={activePopup.properties.userLevel} tone="success" />
                             <LevelRow level={3} amount={activePopup.properties.l3} activeLevel={activePopup.properties.userLevel} tone="primary" />
@@ -409,31 +447,9 @@ export default function WageMap({ socCode, jobTitle, userSalary }: { socCode: st
                             <LevelRow level={1} amount={activePopup.properties.l1} activeLevel={activePopup.properties.userLevel} tone="warning" />
                         </div>
                         <p className="sr-only">
-                          {activePopup.properties.c}, {activePopup.properties.s}. Annual wage thresholds: Level 1 ${activePopup.properties.l1.toLocaleString()}, Level 2 ${activePopup.properties.l2.toLocaleString()}, Level 3 ${activePopup.properties.l3.toLocaleString()}, Level 4 ${activePopup.properties.l4.toLocaleString()}.
+                          {activePopup.properties.c}, {activePopup.properties.s}. Level 1 ${activePopup.properties.l1.toLocaleString()}, Level 2 ${activePopup.properties.l2.toLocaleString()}, Level 3 ${activePopup.properties.l3.toLocaleString()}, Level 4 ${activePopup.properties.l4.toLocaleString()}.
                         </p>
 
-                        {/* Actionable Gap Analysis */}
-                        <AnimatePresence>
-                          {gapInfo && (
-                              <motion.div 
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                className="mt-3.5 pt-3 border-t border-[var(--border-subtle)]"
-                              >
-                                  <div className="flex items-start gap-2.5 bg-[var(--surface-muted)] p-3 rounded-xl border border-[var(--border-subtle)]">
-                                    <TrendingUp className="w-4 h-4 text-[var(--brand-primary)] shrink-0 mt-0.5" />
-                                    <div>
-                                      <p className="text-[12px] text-[var(--foreground)] font-medium leading-snug">
-                                          A <span className="font-bold text-[var(--foreground)]">${gapInfo.diff.toLocaleString()}</span> bump reaches <span className="font-bold">{gapInfo.next}</span>.
-                                      </p>
-                                      <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                                          Under the registration rule, this corresponds to estimated odds of <span className="font-bold text-[var(--foreground)]">{gapInfo.nextOdds}</span>.
-                                      </p>
-                                    </div>
-                                  </div>
-                              </motion.div>
-                          )}
-                        </AnimatePresence>
                     </div>
                 </Popup>
             )}
