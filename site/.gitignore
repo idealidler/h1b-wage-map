@@ -25,9 +25,6 @@ data-pipeline/raw_data/
 *.xlsx
 
 
-# BUT allow this specific file because the App needs it for RAG
-!site/data/oes_soc_occs.csv
-
 # --- JSON RULES ---
 # Allow the map file we generate
 !site/public/company_soc_map.json

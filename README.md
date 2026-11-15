@@ -29,10 +29,6 @@ Applicants currently have to blindly guess which job titles or locations yield t
 * **Historical Data:** Search 200,000+ past H-1B filings (FY 2022–2026) to see exactly what SOC codes companies like Google, Amazon, or Tesla actually use.
 * **O*NET Mapping:** Automatically links internal job titles (e.g., "BI Analyst") to official government SOC codes (e.g., "Data Scientist").
 
-### 3. 🤖 AI SOC Matcher (RAG)
-* **Resume Analysis:** Uses **Google Gemini / Llama 3** to analyze user job descriptions.
-* **Reverse Mapping:** Matches natural language descriptions to the closest official O*NET Occupation Code using Retrieval-Augmented Generation (RAG).
-
 ---
 
 ## 🏗️ Technical Architecture
@@ -53,7 +49,6 @@ To render 3,000+ counties instantly:
 * **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS
 * **Maps:** Mapbox GL JS (`react-map-gl`), Turf.js (Geospatial analysis)
 * **Data Pipeline:** Python (Pandas) for ETL, Static JSON Sharding
-* **AI:** Google Generative AI SDK (Gemini)
 * **Infrastructure:** Vercel (Edge Network)
 
 ---
@@ -63,7 +58,6 @@ To render 3,000+ counties instantly:
 ### Prerequisites
 * Node.js 18+
 * Mapbox API Token (Free tier)
-* Google Gemini API Key
 
 ### Installation
 
@@ -82,7 +76,6 @@ To render 3,000+ counties instantly:
     Create a `.env.local` file:
     ```bash
     NEXT_PUBLIC_MAPBOX_TOKEN=pk.your_mapbox_token_here
-    GEMINI_API_KEY=your_google_ai_key_here
     ```
 
 4.  **Run the Data Pipeline (Optional)**

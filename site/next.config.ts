@@ -2,7 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  
+  async redirects() {
+    return [
+      {
+        source: "/find",
+        destination: "/#find-soc-employer",
+        permanent: true,
+      },
+    ];
+  },
+
   // This function sets headers for your static files
   async headers() {
     return [

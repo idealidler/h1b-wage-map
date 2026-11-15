@@ -2,8 +2,8 @@
 
 Next.js App Router frontend for:
 - county-level H-1B prevailing wage visualization
-- SOC discovery via AI matching
 - SOC discovery via historical employer LCA mappings
+- occupation and SOC code search
 
 ## Quick Start
 
@@ -31,8 +31,6 @@ Open `http://localhost:3000`.
   - wage map workspace
   - SOC by employer flow (embedded)
   - data sources section
-- `/find`: AI SOC finder page
-- `/api/match-soc`: AI SOC matching API endpoint
 - `/sitemap.xml`: generated from `src/app/sitemap.ts`
 
 ## Core Components
@@ -46,7 +44,7 @@ Open `http://localhost:3000`.
 
 - `public/jobs/*.json`: county wage data by base SOC code
 - `public/db/*.json`: employer title-to-SOC historical mapping shards
-- `public/soc_data.json`: SOC reference used by AI matching and job search
+- `public/soc_data.json`: SOC reference used by the occupation search
 
 ## Project Layout
 
@@ -55,8 +53,6 @@ site/
   src/
     app/
       page.tsx           # Hero + map + employer flow
-      find/page.tsx      # AI SOC finder
-      api/match-soc/     # AI route
       layout.tsx
       globals.css
     components/
@@ -72,5 +68,5 @@ site/
 
 ## Notes
 
-- This repository intentionally uses `public/soc_data.json` as canonical SOC reference for UI/API.
+- This repository intentionally uses `public/soc_data.json` as the canonical reference for occupation search.
 - Generated files like `.next/` and `*.tsbuildinfo` should not be committed.

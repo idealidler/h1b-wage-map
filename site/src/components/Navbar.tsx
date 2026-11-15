@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Map as MapIcon, Sparkles, Building2, CircleHelp, Menu } from "lucide-react";
+import { Map as MapIcon, Building2, CircleHelp } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 const navItems = [
   { path: "/", label: "Wage Map", icon: null },
-  { path: "/#find-soc-employer", label: "SOC by Employer", icon: Building2 },
-  { path: "/find", label: "Find SOC with AI", icon: Sparkles },
+  { path: "/#find-soc-employer", label: "Find SOC by Employer", icon: Building2 },
   { path: "/faq", label: "FAQ", icon: CircleHelp },
 ];
 
@@ -135,15 +134,13 @@ export default function Navbar() {
         {/* Mobile Actions */}
         <div className="flex items-center gap-3 md:hidden">
           <Link
-            href="/find"
+            href="/#find-soc-employer"
+            onClick={markEmployerIntent}
             className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[var(--foreground)] px-4 py-2 rounded-full shadow-md hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--foreground)]"
           >
-            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-            AI Match
+            <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
+            Find SOC by Employer
           </Link>
-          <button className="p-2 text-[var(--foreground-muted)] hover:bg-[var(--surface-muted)] rounded-full transition-colors border border-transparent">
-            <Menu className="w-5 h-5" />
-          </button>
         </div>
       </div>
     </nav>
