@@ -159,7 +159,7 @@ function WageMapContent() {
       }, 150); 
     };
 
-    // Run on initial mount (with a small delay) if navigating from /find
+    // Run on initial mount so employer links can focus the search field.
     const mountTimer = setTimeout(() => {
       handleFocusEvent();
     }, 100);
