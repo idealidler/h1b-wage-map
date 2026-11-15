@@ -26,7 +26,7 @@ Applicants currently have to blindly guess which job titles or locations yield t
 * **Hybrid/Remote Logic:** Built-in compliance alerts for "Lowest Wage Rule" scenarios.
 
 ### 2. 🏢 Employer Filing Database (LCA Search)
-* **Historical Data:** Search 200,000+ past H-1B filings (FY 2022–2025) to see exactly what SOC codes companies like Google, Amazon, or Tesla actually use.
+* **Historical Data:** Search 200,000+ past H-1B filings (FY 2022–2026) to see exactly what SOC codes companies like Google, Amazon, or Tesla actually use.
 * **O*NET Mapping:** Automatically links internal job titles (e.g., "BI Analyst") to official government SOC codes (e.g., "Data Scientist").
 
 ### 3. 🤖 AI SOC Matcher (RAG)
@@ -104,7 +104,7 @@ To render 3,000+ counties instantly:
 
 * **Wage Data:** Official U.S. Department of Labor OFLC FLC Data Center.
     * *Reference Dataset:* **OFLC data series 07/2026 - 06/2027**.
-* **LCA Data:** OFLC Historical Disclosure Data (FY 2022 – 2025).
+* **LCA Data:** OFLC Historical Disclosure Data (FY 2022 – 2026).
 * **Data Updates:**
     * Wage Levels: Updated Annually (July).
     * Company Filings: Updated Quarterly.

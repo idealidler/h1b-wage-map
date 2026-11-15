@@ -218,7 +218,7 @@ export default function LcaSearch({ inputId = "employer-search-input", spotlight
       totalFilings,
       uniqueRoles: titles.length,
       coverageYears:
-        Number.isFinite(minYear) && Number.isFinite(maxYear) ? `${minYear}–${maxYear}` : "2022–2025",
+        Number.isFinite(minYear) && Number.isFinite(maxYear) ? `${minYear}–${maxYear}` : "2022–2026",
     };
   }, [selectedCompany, dataCache]);
 
